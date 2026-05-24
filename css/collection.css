@@ -1,0 +1,289 @@
+/* 幻海伝説 - コレクション・チーム選択スタイル */
+
+/* ===== コレクション画面 ===== */
+#screen-collection {
+  padding: 0;
+  gap: 0;
+  position: relative;
+}
+
+.collection-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 16px;
+  background: rgba(0,0,0,0.5);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  flex-shrink: 0;
+  width: 100%;
+}
+.collection-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #e8e0ff;
+}
+#btn-back-from-collection {
+  background: transparent;
+  color: rgba(255,255,255,0.4);
+  font-size: 0.8rem;
+  padding: 4px 8px;
+}
+
+/* ===== フィルターバー ===== */
+#filter-bar, #ts-filter-bar {
+  display: flex;
+  gap: 6px;
+  padding: 10px 12px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+  background: rgba(0,0,0,0.3);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.filter-btn {
+  padding: 5px 12px;
+  font-size: 0.75rem;
+  border-radius: 20px;
+  border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(255,255,255,0.05);
+  color: rgba(255,255,255,0.6);
+  transition: all 0.2s;
+  cursor: pointer;
+}
+.filter-btn.active {
+  background: rgba(255,255,255,0.15);
+  color: #fff;
+  border-color: rgba(255,255,255,0.4);
+}
+.filter-btn:hover { background: rgba(255,255,255,0.1); color: #fff; }
+
+/* ===== カードグリッド ===== */
+#card-grid, #ts-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 10px;
+  padding: 12px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.monster-card {
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.03);
+  padding: 10px 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  position: relative;
+  transition: transform 0.2s, box-shadow 0.2s;
+  cursor: default;
+  min-height: 150px;
+}
+.monster-card.owned {
+  cursor: pointer;
+}
+.monster-card.owned:hover {
+  transform: scale(1.04);
+  background: rgba(255,255,255,0.06);
+}
+
+/* 属性カラー枠 */
+.monster-card.owned[data-element="fire"]  { border-color: rgba(255,69,0,0.3); }
+.monster-card.owned[data-element="water"] { border-color: rgba(30,144,255,0.3); }
+.monster-card.owned[data-element="earth"] { border-color: rgba(184,134,11,0.3); }
+.monster-card.owned[data-element="wind"]  { border-color: rgba(50,205,50,0.3); }
+.monster-card.owned[data-element="light"] { border-color: rgba(255,215,0,0.3); }
+.monster-card.owned[data-element="dark"]  { border-color: rgba(155,89,182,0.3); }
+
+.monster-card.selected {
+  border-width: 2px;
+  box-shadow: 0 0 10px rgba(255,215,0,0.3);
+}
+.monster-card.selected[data-element="fire"]  { border-color: #ff4500; }
+.monster-card.selected[data-element="water"] { border-color: #1e90ff; }
+.monster-card.selected[data-element="earth"] { border-color: #b8860b; }
+.monster-card.selected[data-element="wind"]  { border-color: #32cd32; }
+.monster-card.selected[data-element="light"] { border-color: #ffd700; }
+.monster-card.selected[data-element="dark"]  { border-color: #9b59b6; }
+
+.monster-card.locked { opacity: 0.45; cursor: default; }
+.monster-card.locked:hover { transform: none; }
+
+.card-rarity {
+  font-size: 0.6rem;
+  letter-spacing: -0.05em;
+}
+.card-emoji {
+  font-size: 2rem;
+  line-height: 1;
+  width: 52px; height: 52px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 8px;
+}
+.card-name {
+  font-size: 0.65rem;
+  text-align: center;
+  font-weight: 600;
+  color: #e8e0ff;
+  line-height: 1.2;
+}
+.card-sub {
+  font-size: 0.55rem;
+  color: rgba(255,255,255,0.4);
+  text-align: center;
+}
+.card-level {
+  font-size: 0.65rem;
+  color: #ffd700;
+  font-weight: 700;
+}
+.card-stats {
+  font-size: 0.5rem;
+  color: rgba(255,255,255,0.35);
+  text-align: center;
+  line-height: 1.4;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 4px;
+  justify-content: center;
+}
+
+.card-selected-badge {
+  position: absolute;
+  top: 4px; right: 4px;
+  font-size: 0.55rem;
+  background: rgba(255,215,0,0.2);
+  color: #ffd700;
+  padding: 2px 4px;
+  border-radius: 4px;
+  border: 1px solid rgba(255,215,0,0.4);
+}
+
+.card-locked-icon { font-size: 1.5rem; margin: 12px 0; }
+.locked-name { color: rgba(255,255,255,0.25); }
+
+/* ===== カード詳細パネル ===== */
+.card-detail-panel {
+  position: fixed;
+  right: 0; top: 0; bottom: 0;
+  width: 260px;
+  background: rgba(8,8,25,0.97);
+  border-left: 1px solid rgba(255,255,255,0.1);
+  padding: 20px 16px;
+  display: none;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 600;
+  overflow-y: auto;
+  backdrop-filter: blur(8px);
+}
+
+.detail-close {
+  position: absolute;
+  top: 12px; right: 12px;
+  font-size: 1rem;
+  color: rgba(255,255,255,0.4);
+  cursor: pointer;
+}
+.detail-close:hover { color: #fff; }
+
+.detail-emoji {
+  font-size: 3rem;
+  text-align: center;
+}
+.detail-name {
+  font-size: 1.1rem;
+  font-weight: 700;
+  text-align: center;
+}
+.detail-sub {
+  font-size: 0.72rem;
+  color: var(--text-dim, rgba(255,255,255,0.5));
+  text-align: center;
+}
+.detail-rarity {
+  text-align: center;
+  font-size: 0.8rem;
+  letter-spacing: 0.05em;
+}
+.detail-level {
+  text-align: center;
+  font-size: 0.8rem;
+  color: #ffd700;
+}
+
+.detail-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  background: rgba(255,255,255,0.04);
+  padding: 10px;
+  border-radius: 8px;
+  font-size: 0.75rem;
+}
+.detail-stats span { text-align: center; }
+
+.detail-skill-title {
+  font-size: 0.7rem;
+  color: var(--text-dim, rgba(255,255,255,0.4));
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-top: 4px;
+}
+.detail-skill {
+  background: rgba(255,255,255,0.04);
+  border-radius: 8px;
+  padding: 10px;
+  font-size: 0.75rem;
+  line-height: 1.6;
+  border-left: 3px solid rgba(255,255,255,0.15);
+}
+.detail-skill.ex-skill {
+  border-left-color: #ffd700;
+  background: rgba(255,215,0,0.05);
+}
+
+/* ===== チーム選択フラッシュ ===== */
+.collection-flash {
+  position: fixed;
+  bottom: 100px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(231,76,60,0.9);
+  color: #fff;
+  padding: 8px 20px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+  z-index: 700;
+  white-space: nowrap;
+}
+
+/* ===== チーム選択スクリーン ===== */
+#screen-team-select {
+  background: var(--bg, #080814);
+}
+
+.team-select-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 16px;
+  background: rgba(0,0,0,0.4);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  width: 100%;
+  flex-shrink: 0;
+}
+
+/* ===== レスポンシブ ===== */
+@media (max-width: 480px) {
+  #card-grid, #ts-card-grid { grid-template-columns: repeat(auto-fill, minmax(82px, 1fr)); gap: 8px; }
+  .monster-card { min-height: 130px; padding: 8px 4px; }
+  .card-emoji { font-size: 1.7rem; width: 44px; height: 44px; }
+  .card-name { font-size: 0.6rem; }
+  .card-detail-panel { width: 90%; right: 5%; left: 5%; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; top: 10%; bottom: 10%; }
+}
