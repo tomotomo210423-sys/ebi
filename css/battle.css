@@ -1,0 +1,435 @@
+/* 幻海伝説 - バトル画面スタイル */
+
+/* ===== バトルスクリーン全体 ===== */
+#screen-battle {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  gap: 0;
+  background: radial-gradient(ellipse at 50% 20%, #0a0518 0%, #050510 100%);
+  overflow: hidden;
+}
+
+/* ===== バトルヘッダー ===== */
+.battle-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: rgba(0,0,0,0.4);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  flex-shrink: 0;
+}
+.battle-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #e8e0ff;
+  letter-spacing: 0.05em;
+}
+.battle-title.boss { color: #ff4500; text-shadow: 0 0 8px #ff4500; }
+#btn-battle-back {
+  background: transparent;
+  color: rgba(255,255,255,0.3);
+  font-size: 0.75rem;
+  padding: 4px 8px;
+}
+
+/* ===== ターンインジケーター ===== */
+#turn-indicator {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 1.2rem;
+  font-weight: 900;
+  padding: 8px 20px;
+  border-radius: 20px;
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(4px);
+  pointer-events: none;
+  z-index: 100;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.turn-indicator.player-first { color: #ffd700; border: 2px solid #ffd700; }
+.turn-indicator.enemy-first  { color: #e74c3c; border: 2px solid #e74c3c; }
+
+/* ===== バトルフィールド ===== */
+#battle-field {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  padding: 8px;
+  gap: 8px;
+  min-height: 0;
+}
+
+.monster-row {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* ===== モンスタースロット ===== */
+.monster-slot {
+  width: 100px;
+  min-height: 110px;
+  border-radius: 10px;
+  border: 2px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.03);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 6px 4px;
+  gap: 2px;
+  position: relative;
+  transition: border-color 0.3s, box-shadow 0.3s;
+  overflow: visible;
+}
+
+/* 属性カラーリング */
+.monster-slot[data-element="fire"]  { border-color: rgba(255,69,0,0.4); }
+.monster-slot[data-element="water"] { border-color: rgba(30,144,255,0.4); }
+.monster-slot[data-element="earth"] { border-color: rgba(184,134,11,0.4); }
+.monster-slot[data-element="wind"]  { border-color: rgba(50,205,50,0.4); }
+.monster-slot[data-element="light"] { border-color: rgba(255,215,0,0.4); }
+.monster-slot[data-element="dark"]  { border-color: rgba(155,89,182,0.4); }
+
+.monster-slot.active[data-element="fire"]  { border-color: #ff4500; box-shadow: 0 0 12px rgba(255,69,0,0.5); }
+.monster-slot.active[data-element="water"] { border-color: #1e90ff; box-shadow: 0 0 12px rgba(30,144,255,0.5); }
+.monster-slot.active[data-element="earth"] { border-color: #b8860b; box-shadow: 0 0 12px rgba(184,134,11,0.5); }
+.monster-slot.active[data-element="wind"]  { border-color: #32cd32; box-shadow: 0 0 12px rgba(50,205,50,0.5); }
+.monster-slot.active[data-element="light"] { border-color: #ffd700; box-shadow: 0 0 12px rgba(255,215,0,0.5); }
+.monster-slot.active[data-element="dark"]  { border-color: #9b59b6; box-shadow: 0 0 12px rgba(155,89,182,0.5); }
+
+.monster-slot.defeated {
+  opacity: 0.35;
+  filter: grayscale(1);
+  border-color: rgba(255,255,255,0.05) !important;
+  box-shadow: none !important;
+}
+
+.monster-emoji {
+  font-size: 2rem;
+  line-height: 1;
+  margin-top: 2px;
+}
+.monster-name {
+  font-size: 0.6rem;
+  color: #ccc;
+  text-align: center;
+  line-height: 1.2;
+}
+
+/* HPバー */
+.hp-bar-wrap {
+  width: 90%;
+  height: 5px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-top: 2px;
+}
+.hp-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--hp-high);
+  transition: width 0.5s ease-out;
+}
+.hp-text {
+  font-size: 0.55rem;
+  color: #999;
+  text-align: center;
+}
+
+/* EXゲージ */
+.ex-gauge-wrap {
+  width: 90%;
+  height: 3px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 1px;
+}
+.ex-gauge-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: #555;
+  transition: width 0.3s ease, background 0.3s;
+}
+
+/* 状態異常アイコン */
+.status-icons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  justify-content: center;
+  margin-top: 2px;
+}
+.status-icon {
+  font-size: 0.45rem;
+  background: rgba(0,0,0,0.5);
+  padding: 1px 2px;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+
+/* ===== アニメーション ===== */
+@keyframes attackShake {
+  0%,100% { transform: translateX(0); }
+  25%      { transform: translateX(-6px) scale(1.05); }
+  75%      { transform: translateX(6px) scale(1.05); }
+}
+@keyframes hitFlash {
+  0%,100% { filter: brightness(1); }
+  50%      { filter: brightness(2.5) saturate(0.3); }
+}
+@keyframes exPulse {
+  0%   { transform: scale(1); box-shadow: 0 0 0 0 rgba(255,215,0,0.6); }
+  50%  { transform: scale(1.06); box-shadow: 0 0 20px 8px rgba(255,215,0,0.4); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255,215,0,0); }
+}
+@keyframes enterPulse {
+  0%   { transform: scale(0.8); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.monster-slot.attacking { animation: attackShake 0.3s ease; }
+.monster-slot.hit        { animation: hitFlash 0.4s ease; }
+.monster-slot.ex-activate { animation: exPulse 0.8s ease; }
+.monster-slot.entering   { animation: enterPulse 0.5s ease; }
+
+/* ダメージフロート */
+@keyframes damageFloat {
+  0%   { transform: translateY(0) scale(1); opacity: 1; }
+  100% { transform: translateY(-50px) scale(1.3); opacity: 0; }
+}
+.damage-float {
+  position: absolute;
+  top: 0; left: 50%;
+  transform: translateX(-50%);
+  font-size: 1.1rem;
+  font-weight: 900;
+  pointer-events: none;
+  z-index: 200;
+  animation: damageFloat 0.9s ease-out forwards;
+  white-space: nowrap;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+}
+.damage-float.damage { color: #ff4444; }
+.damage-float.heal   { color: #44ff88; }
+
+/* ===== バトルバナー ===== */
+#battle-banner {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 1.3rem;
+  font-weight: 900;
+  padding: 8px 24px;
+  border-radius: 30px;
+  background: rgba(0,0,0,0.75);
+  backdrop-filter: blur(4px);
+  pointer-events: none;
+  z-index: 150;
+  opacity: 0;
+  transition: opacity 0.3s;
+  white-space: nowrap;
+}
+.battle-banner.super { color: #ffd700; border: 2px solid #ffd700; }
+.battle-banner.weak  { color: #aaa;    border: 2px solid #555; }
+.battle-banner.ex    { color: #ffd700; border: 2px solid #ffd700; font-size: 1.5rem; }
+
+/* ===== アクションログ ===== */
+#battle-log {
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px 10px;
+  background: rgba(0,0,0,0.3);
+  border-radius: 8px;
+  font-size: 0.72rem;
+  line-height: 1.6;
+  min-height: 60px;
+  max-height: 100px;
+}
+#battle-log::-webkit-scrollbar { width: 4px; }
+#battle-log::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
+
+.log-line { padding: 1px 0; }
+.log-line.player  { color: #7ec8e3; }
+.log-line.enemy   { color: #ffb347; }
+.log-line.heal    { color: #55e699; }
+.log-line.status  { color: #dda0dd; }
+.log-line.dot     { color: #ff9966; }
+.log-line.enter   { color: #ffffcc; }
+.log-line.revive  { color: #aaffaa; }
+.log-line.ex      { color: #ffd700; font-weight: 700; }
+.log-line.bonus   { color: #ffaa55; font-size: 0.68rem; }
+.log-line.turn-divider { color: rgba(255,255,255,0.2); font-size: 0.65rem; text-align: center; }
+
+/* ===== ルーレットパネル ===== */
+#roulette-panel {
+  flex-shrink: 0;
+  background: rgba(0,0,0,0.5);
+  border-top: 1px solid rgba(255,255,255,0.08);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.roulette-hint {
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  letter-spacing: 0.05em;
+}
+
+#roulette-container {
+  position: relative;
+  width: 100%;
+  max-width: 500px;
+  overflow: hidden;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(0,0,0,0.4);
+}
+
+#roulette-pointer {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #ffd700;
+  font-size: 1rem;
+  z-index: 10;
+  pointer-events: none;
+  line-height: 1;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+}
+
+/* 左右グラデーションフェード */
+#roulette-container::before,
+#roulette-container::after {
+  content: '';
+  position: absolute;
+  top: 0; bottom: 0;
+  width: 40px;
+  z-index: 5;
+  pointer-events: none;
+}
+#roulette-container::before {
+  left: 0;
+  background: linear-gradient(to right, rgba(0,0,0,0.7), transparent);
+}
+#roulette-container::after {
+  right: 0;
+  background: linear-gradient(to left, rgba(0,0,0,0.7), transparent);
+}
+
+#roulette-strip {
+  display: flex;
+  will-change: transform;
+  padding: 0;
+}
+
+.roulette-tile {
+  width: 90px;
+  height: 70px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border-left: 3px solid transparent;
+  transition: background 0.15s;
+}
+.roulette-tile.selected {
+  background: rgba(255,255,255,0.12) !important;
+  border-left-width: 4px;
+}
+.roulette-emoji { font-size: 1.6rem; line-height: 1; }
+.roulette-label { font-size: 0.65rem; color: #ddd; letter-spacing: 0.05em; }
+
+/* STOPボタン */
+#btn-roulette-stop {
+  padding: 12px 48px;
+  font-size: 1.1rem;
+  font-weight: 900;
+  background: linear-gradient(135deg, #e74c3c, #c0392b);
+  color: #fff;
+  border-radius: 30px;
+  letter-spacing: 0.1em;
+  box-shadow: 0 4px 16px rgba(231,76,60,0.4);
+  transition: transform 0.1s, box-shadow 0.1s, opacity 0.2s;
+  opacity: 0.5;
+}
+#btn-roulette-stop.active {
+  opacity: 1;
+  animation: pulse-btn 0.8s infinite;
+}
+#btn-roulette-stop:disabled { cursor: not-allowed; }
+#btn-roulette-stop:not(:disabled):hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 24px rgba(231,76,60,0.6);
+}
+#btn-roulette-stop:active { transform: scale(0.97); }
+
+@keyframes pulse-btn {
+  0%, 100% { box-shadow: 0 4px 16px rgba(231,76,60,0.4); }
+  50%       { box-shadow: 0 4px 30px rgba(231,76,60,0.8); }
+}
+
+#roulette-hint {
+  font-size: 0.7rem;
+  color: var(--text-dim);
+}
+
+/* ===== バトル結果オーバーレイ ===== */
+#battle-result-overlay {
+  position: absolute;
+  inset: 0;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.75);
+  backdrop-filter: blur(4px);
+  z-index: 500;
+}
+.result-text {
+  font-size: 2.5rem;
+  font-weight: 900;
+  letter-spacing: 0.15em;
+}
+.result-sub {
+  font-size: 1rem;
+  color: var(--text-dim);
+  margin-top: 8px;
+}
+.result-overlay.victory .result-text { color: #ffd700; text-shadow: 0 0 20px rgba(255,215,0,0.6); }
+.result-overlay.defeat  .result-text { color: #e74c3c; text-shadow: 0 0 20px rgba(231,76,60,0.6); }
+
+/* ===== レスポンシブ ===== */
+@media (max-width: 480px) {
+  .monster-slot {
+    width: 82px;
+    min-height: 96px;
+    padding: 4px 2px;
+  }
+  .monster-emoji { font-size: 1.6rem; }
+  .roulette-tile { width: 72px; height: 60px; }
+  .roulette-emoji { font-size: 1.3rem; }
+  #btn-roulette-stop { padding: 10px 36px; font-size: 1rem; }
+  #battle-log { font-size: 0.65rem; }
+}
+
+@media (max-width: 360px) {
+  .monster-slot { width: 70px; }
+  .roulette-tile { width: 62px; }
+  .monster-row { gap: 4px; }
+}
