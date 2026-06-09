@@ -62,6 +62,9 @@ const GameManager = {
     this.loop.start();
 
     window.addEventListener('keydown', (e) => this._handleMenuKey(e));
+
+    // タッチ / マウスクリックによるメニュー操作
+    this.canvas.addEventListener('pointerup', (e) => this._handleCanvasPointer(e));
   },
 
   _resizeCanvas() {
@@ -166,6 +169,68 @@ const GameManager = {
       if (code === 'Space'   || code === 'Enter') {
         if (this.goSelectedOption === 0) this._startStage(this.selectedStage);
         else this._setState('title');
+      }
+    }
+  },
+
+  // ===== タッチ / クリック操作 =====
+  _handleCanvasPointer(e) {
+    const rect  = this.canvas.getBoundingClientRect();
+    const scaleX = CANVAS_W / rect.width;
+    const scaleY = CANVAS_H / rect.height;
+    const cx = (e.clientX - rect.left) * scaleX;
+    const cy = (e.clientY - rect.top)  * scaleY;
+
+    if (this.state === 'title') {
+      const baseY = CANVAS_H * 0.70;
+      const gap   = 38;
+      if (cy >= baseY - 18 && cy <= baseY + 18) {
+        this._setState('stage-select');
+      } else if (cy >= baseY + gap - 18 && cy <= baseY + gap + 18) {
+        this._loadSave();
+        this._setState('stage-select');
+      }
+
+    } else if (this.state === 'stage-select') {
+      const cardW = 130, cardH = 90, gapX = 16, gapY = 14, cols = 2;
+      const gridW = cols * cardW + (cols - 1) * gapX;
+      const gridX = (CANVAS_W - gridW) / 2;
+      const gridY = 56;
+      for (let i = 0; i < 4; i++) {
+        const col  = i % cols;
+        const row  = Math.floor(i / cols);
+        const bx   = gridX + col * (cardW + gapX);
+        const by   = gridY + row * (cardH + gapY);
+        if (cx >= bx && cx <= bx + cardW && cy >= by && cy <= by + cardH) {
+          if (this.selectedStage === i) {
+            this._startStage(i);
+          } else {
+            this.selectedStage = i;
+          }
+          break;
+        }
+      }
+
+    } else if (this.state === 'paused') {
+      const panelH = 130;
+      const py  = (CANVAS_H - panelH) / 2;
+      const opt0Y = py + 68;
+      const opt1Y = py + 68 + 34;
+      if (cy >= opt0Y - 16 && cy <= opt0Y + 16)  this._setState('playing');
+      else if (cy >= opt1Y - 16 && cy <= opt1Y + 16) this._setState('title');
+
+    } else if (this.state === 'stage-clear') {
+      const next = this.selectedStage + 1;
+      if (next < STAGES.length) { this.selectedStage = next; this._setState('stage-select'); }
+      else this._setState('title');
+
+    } else if (this.state === 'game-over') {
+      const baseY = CANVAS_H * 0.70;
+      const gap   = 36;
+      if (cy >= baseY - 16 && cy <= baseY + 16) {
+        this._startStage(this.selectedStage);
+      } else if (cy >= baseY + gap - 16 && cy <= baseY + gap + 16) {
+        this._setState('title');
       }
     }
   },

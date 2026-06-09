@@ -58,7 +58,7 @@
       // ---- Kani (crab) state ----
       this.kaniOnPukpuka = true;
       this.kaniAbsX      = x + (this.w / 2 - 15);  // centered on pukpuka
-      this.kaniAbsY      = y - 24;
+      this.kaniAbsY      = y - 32;   // プカプカの上に乗る（少し上にオフセット）
       this.kaniVx        = 0;
       this.kaniVy        = 0;
       this.kaniW         = 30;   // 10 art × 3 scale
@@ -284,7 +284,7 @@
       if (this.kaniOnPukpuka) {
         // Kani sits on top of Pukpuka
         this.kaniAbsX = this.x + (this.w / 2 - this.kaniW / 2);
-        this.kaniAbsY = this.y - this.kaniH;
+        this.kaniAbsY = this.y - this.kaniH - 8;  // プカプカドームの上に乗る
         this.kaniVx   = 0;
         this.kaniVy   = 0;
       } else {
