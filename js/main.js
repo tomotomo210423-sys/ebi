@@ -181,7 +181,11 @@ const GameManager = {
     this.stageTime += dt;
 
     if (this.player) {
-      this.player.update(dt, this.input, this.tileMap, this.enemies, this.projectiles, this.hazards);
+      // ボスも攻撃対象として含める
+      const attackTargets = this.boss && this.boss.alive
+        ? [this.boss, ...this.enemies]
+        : this.enemies;
+      this.player.update(dt, this.input, this.tileMap, attackTargets, this.projectiles, this.hazards);
 
       // ゴール判定
       const goal = this._findGoalTile();

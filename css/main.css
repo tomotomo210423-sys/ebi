@@ -1,418 +1,273 @@
-/* 幻海伝説 - グローバルスタイル */
+/*
+ * main.css  -  クラゲライダー・カニィとプカプカの大冒険
+ *
+ * Full-screen canvas game stylesheet.
+ * No scrollbars. Touch-action: none on interactive elements.
+ * Pixel-style font stack throughout.
+ */
 
-:root {
-  --clr-fire:  #ff4500; --clr-fire-glow:  rgba(255,69,0,0.4);
-  --clr-water: #1e90ff; --clr-water-glow: rgba(30,144,255,0.4);
-  --clr-earth: #b8860b; --clr-earth-glow: rgba(184,134,11,0.4);
-  --clr-wind:  #32cd32; --clr-wind-glow:  rgba(50,205,50,0.4);
-  --clr-light: #ffd700; --clr-light-glow: rgba(255,215,0,0.4);
-  --clr-dark:  #9b59b6; --clr-dark-glow:  rgba(155,89,182,0.4);
-
-  --bg: #080814;
-  --bg2: #0d0d20;
-  --text: #e8e0ff;
-  --text-dim: #9090c0;
-  --card-bg: rgba(255,255,255,0.04);
-  --border: rgba(255,255,255,0.1);
-
-  --hp-high: linear-gradient(90deg, #27ae60, #2ecc71);
-  --hp-mid:  linear-gradient(90deg, #f39c12, #e67e22);
-  --hp-low:  linear-gradient(90deg, #c0392b, #e74c3c);
-
-  --font: 'Segoe UI', 'Noto Sans JP', sans-serif;
-  --transition: 0.3s ease;
+/* ===== Reset ================================================================ */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
+/* ===== Base ================================================================= */
 html, body {
-  width: 100%; height: 100%; overflow: hidden;
-  background: var(--bg);
-  color: var(--text);
-  font-family: var(--font);
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #000000;
+  color: #ffffff;
+  font-family: "MS Gothic", "Noto Sans JP", "Courier New", monospace;
   font-size: 14px;
   user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
 }
 
-button {
+/* ===== Canvas =============================================================== */
+/*
+ * The canvas is a 640×360 logical surface scaled up to fill the window
+ * while keeping the 16:9 aspect ratio.
+ * We use object-fit approach: the canvas element itself fills the body,
+ * and JS sets the logical dimensions.  CSS keeps it centered.
+ */
+#game-canvas {
+  display: block;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+
+  /* Let JS control width/height in pixels; CSS scales to fill */
+  max-width: 100vw;
+  max-height: 100vh;
+
+  /* Maintain 16:9 */
+  aspect-ratio: 16 / 9;
+
+  /* Pixel-perfect scaling — no blurry upscale */
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+
+  touch-action: none;
+  cursor: default;
+}
+
+/* Full-window stretch variant — used when JS sets canvas to viewport size */
+#game-canvas.stretch {
+  width: 100vw;
+  height: 100vh;
+  top: 0;
+  left: 0;
+  transform: none;
+}
+
+/* ===== Virtual Pad ========================================================== */
+/*
+ * Fixed overlay at the bottom of the screen.
+ * The container itself has pointer-events: none; individual buttons
+ * set pointer-events: all so only buttons are tappable.
+ */
+#virtual-pad {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 160px;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+  z-index: 100;
+  /* Hidden by default on desktop; JS shows it on touch devices */
+  display: none;
+}
+
+/* Show virtual pad when body has touch-capable class (added by JS) */
+body.touch-device #virtual-pad {
+  display: block;
+}
+
+/* ---- Generic virtual pad button ---- */
+.vpad-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+
+  width: 50px;
+  height: 50px;
+
+  background: rgba(20, 40, 70, 0.72);
+  border: 2px solid rgba(100, 160, 220, 0.5);
+  color: rgba(200, 230, 255, 0.92);
+
+  font-family: "MS Gothic", "Courier New", monospace;
+  font-size: 16px;
+  font-weight: bold;
+  text-align: center;
+  line-height: 1;
+
+  opacity: 0.8;
+  pointer-events: all;
+  touch-action: none;
   cursor: pointer;
-  font-family: var(--font);
-  border: none;
+
+  /* No tap highlight on mobile */
+  -webkit-tap-highlight-color: transparent;
   outline: none;
 }
 
-/* ===== スクリーン管理 ===== */
-.screen {
-  position: absolute;
+.vpad-btn:active,
+.vpad-btn.pressed {
+  filter: brightness(1.7);
+  background: rgba(40, 80, 140, 0.85);
+}
+
+/* ---- D-pad buttons (square) ---- */
+.vpad-dpad {
+  border-radius: 6px;
+}
+
+/* ---- Action buttons (circles) ---- */
+.vpad-action {
+  border-radius: 50%;
+}
+
+/* Jump button (A) — large teal circle */
+.vpad-btn-jump {
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  background: rgba(0, 160, 150, 0.80);
+  border-color: rgba(0, 230, 220, 0.70);
+  font-size: 18px;
+}
+
+/* Attack button (B) — orange circle */
+.vpad-btn-attack {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: rgba(200, 100, 0, 0.80);
+  border-color: rgba(255, 160, 50, 0.70);
+}
+
+/* Skill button (C) — purple circle */
+.vpad-btn-skill {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(120, 0, 200, 0.80);
+  border-color: rgba(180, 80, 255, 0.70);
+}
+
+/* ===== Loading Screen ======================================================= */
+#loading-screen {
+  position: fixed;
   inset: 0;
-  display: none;
+  background: #000010;
+  display: flex;
   flex-direction: column;
   align-items: center;
-  overflow-y: auto;
-  background: var(--bg);
-}
-.screen.active { display: flex; }
-
-/* ===== タイトル画面 ===== */
-#screen-title {
   justify-content: center;
-  background: radial-gradient(ellipse at 50% 30%, #1a0a2e 0%, #08080f 70%);
-  position: relative;
+  gap: 20px;
+  z-index: 200;
+}
+
+#loading-screen.hidden {
+  display: none;
+}
+
+.loading-title {
+  font-family: "MS Gothic", "Noto Sans JP", "Courier New", monospace;
+  font-size: 16px;
+  color: #88ccff;
+  letter-spacing: 0.15em;
+  text-align: center;
+}
+
+.loading-dots {
+  font-size: 22px;
+  color: #4499cc;
+  letter-spacing: 0.3em;
+  animation: loading-blink 1.2s infinite steps(1);
+}
+
+@keyframes loading-blink {
+  0%  { opacity: 1; }
+  33% { opacity: 0.4; }
+  66% { opacity: 0.7; }
+  100%{ opacity: 1; }
+}
+
+.loading-bar-outer {
+  width: 200px;
+  height: 8px;
+  background: rgba(40, 70, 100, 0.5);
+  border: 1px solid rgba(80, 140, 200, 0.4);
+  border-radius: 4px;
   overflow: hidden;
 }
 
-/* 星空背景 */
-#screen-title::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-image:
-    radial-gradient(1px 1px at 10% 20%, rgba(255,255,255,0.6) 0%, transparent 100%),
-    radial-gradient(1px 1px at 30% 50%, rgba(255,255,255,0.4) 0%, transparent 100%),
-    radial-gradient(1px 1px at 60% 10%, rgba(255,255,255,0.5) 0%, transparent 100%),
-    radial-gradient(1px 1px at 80% 70%, rgba(255,255,255,0.3) 0%, transparent 100%),
-    radial-gradient(1px 1px at 50% 85%, rgba(255,255,255,0.4) 0%, transparent 100%),
-    radial-gradient(1px 1px at 15% 80%, rgba(255,255,255,0.3) 0%, transparent 100%),
-    radial-gradient(1px 1px at 90% 40%, rgba(255,255,255,0.5) 0%, transparent 100%),
-    radial-gradient(2px 2px at 45% 60%, rgba(180,180,255,0.6) 0%, transparent 100%),
-    radial-gradient(2px 2px at 70% 30%, rgba(180,180,255,0.5) 0%, transparent 100%),
-    radial-gradient(2px 2px at 25% 40%, rgba(255,220,180,0.4) 0%, transparent 100%);
-  pointer-events: none;
+.loading-bar-inner {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #2266aa, #44aaff);
+  border-radius: 4px;
+  transition: width 0.2s ease;
 }
 
-.title-logo {
-  text-align: center;
-  margin-bottom: 40px;
-  z-index: 1;
-}
-.title-main {
-  font-size: 3rem;
-  font-weight: 900;
-  letter-spacing: 0.15em;
-  background: linear-gradient(135deg, #ffd700, #ff9800, #e040fb, #1e90ff);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  text-shadow: none;
-  filter: drop-shadow(0 0 20px rgba(255,200,100,0.4));
-}
-.title-sub {
-  font-size: 0.9rem;
-  color: var(--text-dim);
-  letter-spacing: 0.3em;
-  margin-top: 8px;
-}
-.title-tagline {
-  font-size: 0.8rem;
-  color: var(--text-dim);
-  margin-top: 4px;
-}
-
-.title-stats {
-  font-size: 0.75rem;
-  color: var(--text-dim);
-  text-align: center;
-  margin-bottom: 24px;
-  z-index: 1;
-  line-height: 1.8;
-}
-
-.title-buttons {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  z-index: 1;
-  width: 240px;
-}
-
-.title-btn {
-  padding: 14px 24px;
-  font-size: 1rem;
-  font-weight: 700;
-  border-radius: 8px;
-  letter-spacing: 0.05em;
-  transition: transform var(--transition), box-shadow var(--transition);
-}
-.title-btn:hover { transform: scale(1.04); }
-
-.btn-story {
-  background: linear-gradient(135deg, #9b59b6, #6c3483);
-  box-shadow: 0 4px 20px rgba(155,89,182,0.4);
-  color: #fff;
-}
-.btn-collection {
-  background: linear-gradient(135deg, #2980b9, #1a5276);
-  box-shadow: 0 4px 16px rgba(41,128,185,0.3);
-  color: #fff;
-}
-.btn-free-battle {
-  background: linear-gradient(135deg, #e74c3c, #922b21);
-  box-shadow: 0 4px 16px rgba(231,76,60,0.3);
-  color: #fff;
-}
-.btn-reset {
-  background: transparent;
-  color: var(--text-dim);
-  font-size: 0.75rem;
-  padding: 8px;
-}
-.btn-reset:hover { color: #e74c3c; }
-
-/* ===== カットシーンボックス ===== */
-#cutscene-box {
-  position: fixed;
-  bottom: 0; left: 0; right: 0;
-  background: rgba(5,5,20,0.95);
-  border-top: 2px solid var(--clr-light);
-  padding: 16px 20px;
-  display: none;
-  flex-direction: column;
-  gap: 8px;
-  z-index: 1000;
-  min-height: 110px;
-}
-
-#cutscene-speaker {
-  font-size: 0.85rem;
-  font-weight: 700;
-  color: var(--clr-light);
+/* ===== UI Text Utility Classes ============================================== */
+/*
+ * Pixel-style font utilities for use in any on-screen element.
+ */
+.pixel-font {
+  font-family: "MS Gothic", "Courier New", monospace;
+  font-weight: bold;
   letter-spacing: 0.05em;
 }
-#cutscene-line {
-  font-size: 0.95rem;
-  line-height: 1.7;
-  color: var(--text);
-  min-height: 2em;
-}
-#cutscene-next {
-  align-self: flex-end;
-  background: transparent;
-  color: var(--clr-light);
-  font-size: 1.2rem;
-  padding: 4px 8px;
-  animation: blink 1s infinite;
-}
-@keyframes blink {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0.3; }
+
+.text-shadow-dark {
+  text-shadow:
+    1px  1px 0 #000,
+   -1px -1px 0 #000,
+    1px -1px 0 #000,
+   -1px  1px 0 #000;
 }
 
-/* ===== チャプター紹介 ===== */
-#chapter-intro {
-  position: fixed;
-  inset: 0;
-  display: none;
-  justify-content: center;
-  align-items: center;
-  z-index: 900;
-  background: rgba(0,0,0,0.8);
-}
-.intro-overlay {
-  text-align: center;
-  padding: 40px;
-  border-radius: 16px;
-}
-.intro-island {
-  font-size: 1.2rem;
-  color: var(--text-dim);
-  letter-spacing: 0.2em;
-  margin-bottom: 12px;
-}
-.intro-title {
-  font-size: 2rem;
-  font-weight: 900;
-  color: var(--text);
+/* ===== Scrollbar suppression =============================================== */
+::-webkit-scrollbar { display: none; }
+html { scrollbar-width: none; }
+
+/* ===== Responsive adjustments ============================================== */
+@media (max-width: 640px) {
+  #virtual-pad {
+    height: 140px;
+  }
+  .vpad-btn {
+    width: 44px;
+    height: 44px;
+    font-size: 14px;
+  }
+  .vpad-btn-jump   { width: 52px; height: 52px; }
+  .vpad-btn-attack { width: 46px; height: 46px; }
+  .vpad-btn-skill  { width: 42px; height: 42px; }
 }
 
-/* ===== ストーリー画面 ===== */
-#screen-story {
-  padding: 0;
-  background: var(--bg);
-  transition: background 0.5s ease;
-}
-
-#chapter-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 16px;
-  padding: 20px;
-  width: 100%;
-}
-
-.chapter-card {
-  border-radius: 12px;
-  padding: 18px;
-  cursor: pointer;
-  border: 1px solid var(--border);
-  transition: transform var(--transition), box-shadow var(--transition);
-  min-height: 130px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.chapter-card.unlocked:hover { transform: scale(1.03); }
-.chapter-card.locked {
-  background: rgba(255,255,255,0.03);
-  cursor: default;
-  opacity: 0.5;
-}
-
-.chapter-num {
-  font-size: 0.7rem;
-  color: var(--text-dim);
-  letter-spacing: 0.1em;
-}
-.chapter-island {
-  font-size: 0.8rem;
-  color: var(--text-dim);
-}
-.chapter-title {
-  font-size: 1rem;
-  font-weight: 700;
-  color: var(--text);
-}
-.chapter-clear { color: #2ecc71; font-size: 0.8rem; }
-.chapter-battles { font-size: 0.75rem; color: var(--text-dim); margin-top: auto; }
-.chapter-lock { font-size: 1.5rem; }
-.locked-title { color: var(--text-dim); }
-
-/* ===== チーム選択 ===== */
-#screen-team-select {
-  padding: 16px;
-  gap: 12px;
-}
-
-#team-slots-panel {
-  width: 100%;
-  background: var(--bg2);
-  border-radius: 12px;
-  padding: 16px;
-  border: 1px solid var(--border);
-}
-.team-slots-title {
-  font-size: 0.85rem;
-  color: var(--text-dim);
-  margin-bottom: 12px;
-  text-align: center;
-}
-#team-slots-row {
-  display: flex;
-  gap: 12px;
-  justify-content: center;
-}
-.team-slot {
-  width: 80px; height: 90px;
-  border-radius: 8px;
-  border: 2px dashed var(--border);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  transition: border-color var(--transition);
-}
-.team-slot.filled {
-  border-style: solid;
-  background: var(--card-bg);
-}
-.team-slot[data-element="fire"].filled    { border-color: var(--clr-fire); }
-.team-slot[data-element="water"].filled   { border-color: var(--clr-water); }
-.team-slot[data-element="earth"].filled   { border-color: var(--clr-earth); }
-.team-slot[data-element="wind"].filled    { border-color: var(--clr-wind); }
-.team-slot[data-element="light"].filled   { border-color: var(--clr-light); }
-.team-slot[data-element="dark"].filled    { border-color: var(--clr-dark); }
-.slot-empty { font-size: 0.7rem; color: var(--text-dim); }
-.tslot-emoji { font-size: 1.6rem; }
-.tslot-name  { font-size: 0.6rem; text-align: center; }
-.tslot-level { font-size: 0.65rem; color: var(--text-dim); }
-
-#btn-confirm-team {
-  margin-top: 12px;
-  width: 100%;
-  padding: 14px;
-  font-size: 1rem;
-  font-weight: 700;
-  background: linear-gradient(135deg, #9b59b6, #6c3483);
-  color: #fff;
-  border-radius: 8px;
-  opacity: 0.5;
-  transition: opacity var(--transition);
-}
-#btn-confirm-team:not(:disabled) { opacity: 1; }
-
-#btn-back-from-team {
-  background: transparent;
-  color: var(--text-dim);
-  padding: 8px 16px;
-  font-size: 0.85rem;
-}
-
-/* ===== フリーバトル ===== */
-#screen-free-battle {
-  padding: 20px;
-  gap: 12px;
-}
-.free-battle-title { font-size: 1.2rem; font-weight: 700; }
-#free-battle-list {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  width: 100%;
-}
-.free-battle-btn {
-  padding: 14px;
-  background: var(--bg2);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  color: var(--text);
-  font-size: 0.9rem;
-  transition: background var(--transition);
-}
-.free-battle-btn:hover { background: rgba(255,255,255,0.08); }
-
-#btn-back-from-free {
-  background: transparent;
-  color: var(--text-dim);
-  font-size: 0.85rem;
-  padding: 8px;
-}
-
-/* ===== エンディング ===== */
-.ending-screen {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-  background: radial-gradient(ellipse at 50% 40%, rgba(155,89,182,0.3) 0%, transparent 70%);
-  z-index: 500;
-}
-.ending-title {
-  font-size: 2.5rem;
-  font-weight: 900;
-  background: linear-gradient(135deg, #ffd700, #e040fb);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-.ending-subtitle { font-size: 1rem; color: var(--text-dim); }
-.ending-text { font-size: 0.9rem; color: var(--text); text-align: center; line-height: 1.8; }
-.ending-btn {
-  padding: 12px 32px;
-  background: linear-gradient(135deg, #9b59b6, #6c3483);
-  color: #fff;
-  border-radius: 8px;
-  font-size: 1rem;
-  font-weight: 700;
-  margin-top: 8px;
-}
-
-/* ===== レスポンシブ ===== */
-@media (max-width: 480px) {
-  .title-main { font-size: 2rem; }
-  .title-buttons { width: 90%; }
-  #chapter-list { grid-template-columns: 1fr 1fr; gap: 10px; }
-  #free-battle-list { grid-template-columns: 1fr; }
+@media (max-width: 400px) {
+  #virtual-pad {
+    height: 120px;
+  }
+  .vpad-btn {
+    width: 40px;
+    height: 40px;
+    font-size: 12px;
+    opacity: 0.7;
+  }
+  .vpad-btn-jump   { width: 46px; height: 46px; }
+  .vpad-btn-attack { width: 42px; height: 42px; }
+  .vpad-btn-skill  { width: 38px; height: 38px; }
 }

@@ -2,159 +2,58 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-  <title>幻海伝説 - Genkai Densetsu</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>クラゲライダー・カニィとプカプカの大冒険</title>
   <link rel="stylesheet" href="css/main.css">
-  <link rel="stylesheet" href="css/battle.css">
-  <link rel="stylesheet" href="css/collection.css">
 </head>
 <body>
 
-  <!-- ======================================================
-       SCREEN: タイトル
-  ====================================================== -->
-  <div id="screen-title" class="screen active">
-    <div class="title-logo">
-      <div class="title-main">幻海伝説</div>
-      <div class="title-sub">GENKAI DENSETSU</div>
-      <div class="title-tagline">〜 絆は、虚無をも超える 〜</div>
-    </div>
-    <div class="title-stats">
-      <div id="title-owned">コレクション: 3/60体</div>
-      <div id="title-battles">総バトル数: 0</div>
-      <div id="title-wins">勝利数: 0</div>
-    </div>
-    <div class="title-buttons">
-      <button class="title-btn btn-story" id="btn-story">⚔️ ストーリーモード</button>
-      <button class="title-btn btn-collection" id="btn-collection">📚 コレクション</button>
-      <button class="title-btn btn-free-battle" id="btn-free-battle">🎲 フリーバトル</button>
-      <button class="btn-reset" id="btn-reset">データリセット</button>
-    </div>
-  </div>
+  <!-- Main game canvas -->
+  <canvas id="game-canvas"></canvas>
+
+  <!-- Virtual gamepad overlay (populated by VirtualPad class) -->
+  <div id="virtual-pad"></div>
 
   <!-- ======================================================
-       SCREEN: ストーリー
+       Engine layer (order matters: physics before entities)
   ====================================================== -->
-  <div id="screen-story" class="screen">
-    <!-- チャプター紹介オーバーレイ -->
-    <div id="chapter-intro"></div>
-
-    <!-- チャプター一覧 -->
-    <div id="chapter-list"></div>
-  </div>
+  <script src="js/engine/loop.js"></script>
+  <script src="js/engine/input.js"></script>
+  <script src="js/engine/physics.js"></script>
+  <script src="js/engine/camera.js"></script>
 
   <!-- ======================================================
-       SCREEN: チーム選択
+       Sprite data
   ====================================================== -->
-  <div id="screen-team-select" class="screen">
-    <div class="team-select-header">
-      <span style="font-size:0.9rem;font-weight:700;">チーム編成</span>
-      <button id="btn-back-from-team">← 戻る</button>
-    </div>
-    <!-- チームスロット + 決定ボタン -->
-    <div id="team-slots-panel"></div>
-    <!-- フィルターバー（CollectionUIが描画） -->
-    <div id="ts-filter-bar"></div>
-    <!-- カードグリッド（CollectionUIが描画） -->
-    <div id="ts-card-grid"></div>
-  </div>
+  <script src="js/sprites/player_sprites.js"></script>
+  <script src="js/sprites/enemy_sprites.js"></script>
+  <script src="js/sprites/tile_sprites.js"></script>
+  <script src="js/sprites/renderer.js"></script>
 
   <!-- ======================================================
-       SCREEN: バトル
+       Stage / world data
   ====================================================== -->
-  <div id="screen-battle" class="screen">
-    <!-- ヘッダー -->
-    <div class="battle-header">
-      <span id="battle-title" class="battle-title">バトル</span>
-      <button id="btn-battle-back">⏎ 中断</button>
-    </div>
-
-    <!-- バトルフィールド -->
-    <div id="battle-field">
-      <!-- 敵チーム -->
-      <div id="enemy-row" class="monster-row"></div>
-
-      <!-- ターンインジケーター -->
-      <div id="turn-indicator" class="turn-indicator"></div>
-
-      <!-- バトルバナー (効果抜群等) -->
-      <div id="battle-banner" class="battle-banner"></div>
-
-      <!-- アクションログ -->
-      <div id="battle-log"></div>
-
-      <!-- プレイヤーチーム -->
-      <div id="player-row" class="monster-row"></div>
-    </div>
-
-    <!-- ルーレットパネル -->
-    <div id="roulette-panel">
-      <div id="roulette-hint" class="roulette-hint">SPACE または STOP で停止！</div>
-      <div id="roulette-container">
-        <div id="roulette-pointer">▼</div>
-        <div id="roulette-strip"></div>
-      </div>
-      <button id="btn-roulette-stop" disabled>STOP!</button>
-    </div>
-
-    <!-- バトル結果オーバーレイ -->
-    <div id="battle-result-overlay" class="result-overlay"></div>
-  </div>
+  <script src="js/data/stages.js"></script>
 
   <!-- ======================================================
-       SCREEN: コレクション
+       Game logic (depends on engine + sprites + data)
   ====================================================== -->
-  <div id="screen-collection" class="screen">
-    <div class="collection-header">
-      <span class="collection-title">📚 コレクション</span>
-      <button id="btn-back-from-collection">← 戻る</button>
-    </div>
-    <div id="filter-bar"></div>
-    <div id="card-grid"></div>
-  </div>
+  <script src="js/game/projectile.js"></script>
+  <script src="js/game/hazard.js"></script>
+  <script src="js/game/enemy.js"></script>
+  <script src="js/game/boss.js"></script>
+  <script src="js/game/player.js"></script>
 
   <!-- ======================================================
-       SCREEN: フリーバトル
+       UI layer (depends on game logic + engine)
   ====================================================== -->
-  <div id="screen-free-battle" class="screen">
-    <div class="battle-header">
-      <span class="battle-title">🎲 フリーバトル</span>
-      <button id="btn-back-from-free">← 戻る</button>
-    </div>
-    <div style="padding:12px;font-size:0.8rem;color:rgba(255,255,255,0.5);">
-      挑戦する敵チームを選んでください
-    </div>
-    <div id="free-battle-list"></div>
-  </div>
+  <script src="js/ui/virtualpad.js"></script>
+  <script src="js/ui/hud.js"></script>
+  <script src="js/ui/screens.js"></script>
 
   <!-- ======================================================
-       カットシーンボックス (全画面共通・固定)
+       Main entry point (wires everything together)
   ====================================================== -->
-  <div id="cutscene-box">
-    <div id="cutscene-speaker"></div>
-    <div id="cutscene-line"></div>
-    <button id="cutscene-next">▶ 次へ</button>
-  </div>
-
-  <!-- ======================================================
-       スクリプト読み込み（依存順）
-  ====================================================== -->
-  <!-- データ層 -->
-  <script src="js/data/monsters.js"></script>
-  <script src="js/data/story.js"></script>
-
-  <!-- ゲームコア -->
-  <script src="js/game/Monster.js"></script>
-  <script src="js/game/Roulette.js"></script>
-  <script src="js/game/AI.js"></script>
-  <script src="js/game/Battle.js"></script>
-
-  <!-- UI層 -->
-  <script src="js/ui/BattleUI.js"></script>
-  <script src="js/ui/CollectionUI.js"></script>
-  <script src="js/ui/StoryUI.js"></script>
-
-  <!-- メインコントローラー -->
   <script src="js/main.js"></script>
 
 </body>
