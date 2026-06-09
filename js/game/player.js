@@ -168,8 +168,7 @@
       // 2. Kani position (on Pukpuka or in air)
       this._updateKani(dt, input, tileMap, enemies, hazards);
 
-      // 3. Jump input
-      this._handleJump(input);
+      // Jump removed — Kani stays on Pukpuka at all times
 
       // 4. Attack input (Z/J)
       this._handleAttack(dt, input, enemies, projectiles, hazards);
@@ -284,107 +283,12 @@
     // ------------------------------------------------------------------
 
     _updateKani(dt, input, tileMap, enemies, hazards) {
-      if (this.kaniOnPukpuka) {
-        // Kani sits on top of Pukpuka
-        this.kaniAbsX = this.x + (this.w / 2 - this.kaniW / 2);
-        this.kaniAbsY = this.y - this.kaniH;  // プカプカドームの上に乗る
-        this.kaniVx   = 0;
-        this.kaniVy   = 0;
-      } else {
-        // Kani is airborne
-        this.kaniVy = Math.min(this.kaniVy + GRAVITY * dt, MAX_FALL);
-
-        this.kaniAbsX += this.kaniVx * dt;
-        this.kaniAbsY += this.kaniVy * dt;
-
-        // Kani tile collision when airborne
-        if (tileMap) {
-          const kaniEntity = {
-            x: this.kaniAbsX, y: this.kaniAbsY,
-            w: this.kaniW,    h: this.kaniH,
-            vx: this.kaniVx,  vy: this.kaniVy,
-            onGround: false,
-          };
-          Physics.resolveEntityTileCollision(kaniEntity, tileMap);
-          this.kaniAbsX     = kaniEntity.x;
-          this.kaniAbsY     = kaniEntity.y;
-          this.kaniVx       = kaniEntity.vx;
-          this.kaniVy       = kaniEntity.vy;
-          this.kaniOnGround = kaniEntity.onGround;
-        }
-
-        // Check if Kani stomps an enemy while falling
-        if (this.kaniVy > 0 && enemies) {
-          for (const enemy of enemies) {
-            if (!enemy.alive) continue;
-            const stompOverlap = Physics.rectOverlap(
-              this.kaniAbsX, this.kaniAbsY, this.kaniW, this.kaniH,
-              enemy.x, enemy.y, enemy.w, enemy.h
-            );
-            if (stompOverlap) {
-              const kaniBottom  = this.kaniAbsY + this.kaniH;
-              const enemyTop    = enemy.y;
-              const fromAbove   = kaniBottom - enemyTop < 20;
-              if (fromAbove) {
-                // Stomp!
-                const killed = enemy.takeDamage(1, this.facingRight ? 1 : -1);
-                if (hazards) {
-                  hazards.spawn(
-                    enemy.x + enemy.w / 2,
-                    enemy.y,
-                    killed ? 'defeat' : 'hit'
-                  );
-                }
-                // Bounce Kani up
-                this.kaniVy = KANI_STOMP_BOUNCE;
-                // Start synchro window
-                this.synchroTimer       = 0.2;
-                this._stompedThisFrame  = true;
-                break;
-              }
-            }
-          }
-        }
-
-        // Check if Kani has landed back on Pukpuka
-        const pukuTop = this.y;
-        if (this.kaniAbsY + this.kaniH >= pukuTop) {
-          // Check horizontal overlap
-          const kaniRight  = this.kaniAbsX + this.kaniW;
-          const pukuRight  = this.x + this.w;
-          const horizontalOverlap =
-            this.kaniAbsX < pukuRight - 4 &&
-            kaniRight     > this.x + 4;
-
-          if (horizontalOverlap && this.kaniVy >= 0) {
-            this.kaniOnPukpuka = true;
-            this.kaniVy        = 0;
-            this.kaniVx        = 0;
-          }
-        }
-
-        // If Kani hits the ground while not on Pukpuka, keep them standing
-        // (they can walk on the floor briefly before returning to Pukpuka when close)
-        // Horizontal drift on ground
-        if (this.kaniOnGround) {
-          // Slight horizontal momentum when in air is kept
-          this.kaniVx *= Math.pow(0.85, dt * 10);
-        }
-      }
-    }
-
-    // ------------------------------------------------------------------
-    // Jump
-    // ------------------------------------------------------------------
-
-    _handleJump(input) {
-      if (input.jumpDown && this.kaniOnPukpuka) {
-        this.kaniOnPukpuka = false;
-        this.kaniVy        = KANI_JUMP_VY;
-        this.kaniVx        = this.vx * 0.5;  // inherit some pukpuka momentum
-        this.kaniOnGround  = false;
-        this._kaniJumpAnim.reset();
-      }
+      // Kani always rides Pukpuka — no jump mechanic
+      this.kaniOnPukpuka = true;
+      this.kaniAbsX = this.x + (this.w / 2 - this.kaniW / 2);
+      this.kaniAbsY = this.y - this.kaniH;
+      this.kaniVx   = 0;
+      this.kaniVy   = 0;
     }
 
     // ------------------------------------------------------------------

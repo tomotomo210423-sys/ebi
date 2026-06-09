@@ -43,6 +43,7 @@
       // Patrol state
       this._patrolSpeed    = 40;   // canvas px/s
       this._patrolDir      = -1;   // -1 = left, +1 = right
+      this._dirFlipCooldown = 0;   // prevents double-flip in same frame
 
       // Animators
       this._idleAnim   = new SpriteRenderer.Animator(6);
@@ -116,13 +117,14 @@
       }
 
       // Flip direction on wall hit (vx killed by resolver)
-      if (tileMap && this.vx === 0 && this._patrolDir !== 0) {
+      if (tileMap && this.vx === 0 && this._patrolDir !== 0 && this._dirFlipCooldown <= 0) {
         this._patrolDir *= -1;
         this.facingRight = (this._patrolDir > 0);
+        this._dirFlipCooldown = 0.25;
       }
 
       // Flip direction at ledge edge (no ground ahead)
-      if (this.onGround && tileMap) {
+      if (this.onGround && tileMap && this._dirFlipCooldown <= 0) {
         const ahead = this.x + (this._patrolDir > 0 ? this.w + 2 : -2);
         const below = this.y + this.h + 4;
         const tx    = Math.floor(ahead / TILE_SIZE);
@@ -130,6 +132,7 @@
         if (tileMap.get(tx, ty) === 0) {
           this._patrolDir  *= -1;
           this.facingRight  = (this._patrolDir > 0);
+          this._dirFlipCooldown = 0.25;
         }
       }
 
@@ -140,8 +143,9 @@
      * Decrement shared timers.
      */
     _tickTimers(dt) {
-      if (this.invincibleTimer > 0) this.invincibleTimer -= dt;
-      if (this.flashTimer      > 0) this.flashTimer      -= dt;
+      if (this.invincibleTimer  > 0) this.invincibleTimer  -= dt;
+      if (this.flashTimer       > 0) this.flashTimer       -= dt;
+      if (this._dirFlipCooldown > 0) this._dirFlipCooldown -= dt;
     }
 
     /**
@@ -282,7 +286,7 @@
       super(x, y, 30, 24, 3);   // 10×8 art × 3 scale
       this.damage          = 1;
       this._patrolSpeed    = 45;
-      this._chargeTimer    = 0;
+      this._chargeTimer    = 1.5 + Math.random() * 1.5;  // stagger initial charge
       this._chargeCooldown = 3.0;
       this._chargeDuration = 0;
       this._isCharging     = false;
@@ -341,12 +345,12 @@
       this._walkAnim.update(dt);
     }
 
-    draw(ctx, camX, camY) {
+    draw(ctx) {
       if (!this.alive) return;
       if (this._shouldFlash()) return;
 
-      const sx    = Math.round(this.x - camX);
-      const sy    = Math.round(this.y - camY);
+      const sx    = Math.round(this.x);
+      const sy    = Math.round(this.y);
       const flipX = !this.facingRight;
 
       if (typeof GOMIRA_FRAMES !== 'undefined' && GOMIRA_FRAMES && GOMIRA_FRAMES.length > 0 &&
@@ -472,12 +476,12 @@
       this._openAnim.update(dt);
     }
 
-    draw(ctx, camX, camY) {
+    draw(ctx) {
       if (!this.alive) return;
       if (this._shouldFlash()) return;
 
-      const sx    = Math.round(this.x - camX);
-      const sy    = Math.round(this.y - camY);
+      const sx    = Math.round(this.x);
+      const sy    = Math.round(this.y);
       const flipX = !this.facingRight;
 
       if (typeof FUJI_FRAMES !== 'undefined' && FUJI_FRAMES && FUJI_FRAMES.length > 0 &&
@@ -602,12 +606,12 @@
       this._jumpAnim.update(dt);
     }
 
-    draw(ctx, camX, camY) {
+    draw(ctx) {
       if (!this.alive) return;
       if (this._shouldFlash()) return;
 
-      const sx    = Math.round(this.x - camX);
-      const sy    = Math.round(this.y - camY);
+      const sx    = Math.round(this.x);
+      const sy    = Math.round(this.y);
       const flipX = !this.facingRight;
 
       if (typeof MUTSU_FRAMES !== 'undefined' && MUTSU_FRAMES && MUTSU_FRAMES.length > 0 &&
@@ -662,6 +666,129 @@
   }
 
   // ========================================================================
+  // Floater - floating aerial enemy, no gravity, patrol + downward projectile
+  // ========================================================================
+
+  class Floater extends Enemy {
+    constructor(x, y) {
+      super(x, y, 24, 20, 2);
+      this.damage          = 1;
+      this._patrolSpeed    = 55;
+      this._floatBaseY     = y;
+      this._floatTimer     = Math.random() * Math.PI * 2;
+      this._shootTimer     = 1.5 + Math.random() * 2.0;
+      this._shootCooldown  = 3.5;
+      this._patrolDir      = Math.random() < 0.5 ? -1 : 1;
+      this.facingRight     = this._patrolDir > 0;
+    }
+
+    update(dt, player, projectiles, tileMap) {
+      if (!this.alive) return;
+      this._tickTimers(dt);
+
+      // Horizontal patrol — no gravity
+      this.x += this._patrolDir * this._patrolSpeed * dt;
+
+      // Sinusoidal bob
+      this._floatTimer += dt;
+      this.y = this._floatBaseY + Math.sin(this._floatTimer * 1.8) * 18;
+
+      // Flip at world bounds
+      const worldW = tileMap ? tileMap.worldWidth : 99999;
+      if (this.x < 48 && this._dirFlipCooldown <= 0) {
+        this.x = 48;
+        this._patrolDir = 1; this.facingRight = true;
+        this._dirFlipCooldown = 0.3;
+      }
+      if (this.x + this.w > worldW - 48 && this._dirFlipCooldown <= 0) {
+        this.x = worldW - 48 - this.w;
+        this._patrolDir = -1; this.facingRight = false;
+        this._dirFlipCooldown = 0.3;
+      }
+
+      // Shoot downward when player is nearby
+      this._shootTimer -= dt;
+      if (this._shootTimer <= 0 && player) {
+        const dx  = (player.x + player.w / 2) - (this.x + this.w / 2);
+        const dy  = (player.y + player.h / 2) - (this.y + this.h / 2);
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < 320 && dy > -30) {
+          this._shootTimer = this._shootCooldown;
+          if (projectiles) {
+            const len = Math.max(1, dist);
+            projectiles.push(new Projectile(
+              this.x + this.w / 2, this.y + this.h,
+              (dx / len) * 50, 90,
+              this.damage, 'enemy', 'oilball'
+            ));
+          }
+        } else {
+          this._shootTimer = 0.5;
+        }
+      }
+
+      this._idleAnim.update(dt);
+      this._walkAnim.update(dt);
+    }
+
+    draw(ctx) {
+      if (!this.alive) return;
+      if (this._shouldFlash()) return;
+
+      const sx = Math.round(this.x);
+      const sy = Math.round(this.y);
+
+      ctx.save();
+      // Soft glow halo
+      ctx.globalAlpha = 0.2 + Math.abs(Math.sin(this._floatTimer * 2)) * 0.15;
+      ctx.fillStyle = '#CC88FF';
+      ctx.beginPath();
+      ctx.arc(sx + 12, sy + 10, 16, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1.0;
+
+      // Dome body
+      ctx.fillStyle = this.flashTimer > 0 ? '#FFFFFF' : '#7744BB';
+      ctx.beginPath();
+      ctx.ellipse(sx + 12, sy + 9, 10, 9, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Sheen
+      ctx.fillStyle = 'rgba(200,180,255,0.4)';
+      ctx.beginPath();
+      ctx.ellipse(sx + 9, sy + 6, 4, 3, -0.3, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Eyes
+      const ex = this.facingRight ? 4 : -4;
+      ctx.fillStyle = '#FFEE44';
+      ctx.beginPath();
+      ctx.arc(sx + 12 + ex - 3, sy + 8, 2, 0, Math.PI * 2);
+      ctx.arc(sx + 12 + ex + 3, sy + 8, 2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#222';
+      ctx.beginPath();
+      ctx.arc(sx + 12 + ex - 3 + (this.facingRight ? 1 : -1), sy + 8, 1, 0, Math.PI * 2);
+      ctx.arc(sx + 12 + ex + 3 + (this.facingRight ? 1 : -1), sy + 8, 1, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Tendrils
+      ctx.strokeStyle = '#9966CC';
+      ctx.lineWidth = 1.5;
+      for (let i = 0; i < 4; i++) {
+        const tx = sx + 3 + i * 6;
+        const wave = Math.sin(this._floatTimer * 3 + i * 0.9) * 5;
+        ctx.beginPath();
+        ctx.moveTo(tx, sy + 17);
+        ctx.quadraticCurveTo(tx + wave, sy + 22, tx + wave, sy + 28);
+        ctx.stroke();
+      }
+      ctx.restore();
+
+      this._drawHpBar(ctx, sx, sy);
+    }
+  }
+
+  // ========================================================================
   // Export
   // ========================================================================
 
@@ -670,5 +797,6 @@
   window.Gomira     = Gomira;
   window.Fujitsubo  = Fujitsubo;
   window.Mutsugoro  = Mutsugoro;
+  window.Floater    = Floater;
 
 }());

@@ -132,6 +132,7 @@ const GameManager = {
         case 'Gomira':    return new Gomira(ex, ey);
         case 'Fujitsubo': return new Fujitsubo(ex, ey);
         case 'Mutsugoro': return new Mutsugoro(ex, ey);
+        case 'Floater':   return new Floater(ex, ey);
         default:          return new Oily(ex, ey);
       }
     });
@@ -143,10 +144,13 @@ const GameManager = {
       this.boss = null;
     }
 
-    this.projectiles = [];
-    this.hazards     = new HazardManager();
-    this.camera.x    = 0;
-    this.camera.y    = 0;
+    this.projectiles          = [];
+    this.hazards              = new HazardManager();
+    this.camera.x             = 0;
+    this.camera.y             = 0;
+    this._bossPortalUsed      = false;
+    this._bossDefeatedHandled = false;
+    this._bossClearDelay      = null;
 
     this._setState('playing');
   },
@@ -280,6 +284,24 @@ const GameManager = {
         goal.x, goal.y, 48, 48
       )) { this._onStageClear(); return; }
 
+      // ボスポータル判定
+      this._checkBossPortal();
+
+      // ボス撃破 → ステージクリア（1.5秒後）
+      if (this.boss && !this.boss.alive && !this._bossDefeatedHandled) {
+        this._bossDefeatedHandled = true;
+        this.score += 5000;
+        this._bossClearDelay = 1.5;
+      }
+      if (this._bossClearDelay !== null) {
+        this._bossClearDelay -= dt;
+        if (this._bossClearDelay <= 0) {
+          this._bossClearDelay = null;
+          this._onStageClear();
+          return;
+        }
+      }
+
       // 死亡判定
       if (this.player.hp <= 0 || this.player.y > this.tileMap.worldHeight + 100) {
         this._setState('game-over'); return;
@@ -311,6 +333,34 @@ const GameManager = {
       );
     }
     this.camera.update(dt);
+  },
+
+  _checkBossPortal() {
+    const stage = this.currentStage;
+    if (!stage || !stage.bossPortal || this._bossPortalUsed) return;
+    const portal = stage.bossPortal;
+    const portalCX = portal.tx * 48 + 24;
+    const portalCY = portal.ty * 48 + 24;
+    const playerCX = this.player.x + this.player.w / 2;
+    const playerCY = this.player.y + this.player.h / 2;
+    const dist = Math.hypot(playerCX - portalCX, playerCY - portalCY);
+    if (dist < 90 && this.input.attackDown) {
+      this._bossPortalUsed = true;
+      // Teleport player to boss arena (8 tiles past the portal)
+      this.player.x  = (portal.tx + 8) * 48;
+      this.player.y  = (portal.ty - 1) * 48;
+      this.player.vx = 0;
+      this.player.vy = 0;
+      // Wake boss immediately
+      if (this.boss) this.boss.dormant = false;
+      if (this.hazards) {
+        this.hazards.spawn(
+          this.player.x + this.player.w / 2,
+          this.player.y + this.player.h / 2,
+          'electric'
+        );
+      }
+    }
   },
 
   _findGoalTile() {
@@ -365,6 +415,7 @@ const GameManager = {
     this._drawBackground(ctx);
     this.camera.applyToCtx(ctx);
     this._drawTileMap(ctx);
+    this._drawBossPortal(ctx);
     if (this.hazards) this.hazards.draw(ctx);
     this.enemies.forEach(e => e.draw(ctx));
     if (this.boss && this.boss.alive) this.boss.draw(ctx);
@@ -375,6 +426,55 @@ const GameManager = {
       this.hud.drawHUD(ctx, this.player, this.boss && this.boss.alive ? this.boss : null,
         this.currentStage, this.score, this.synchroGauge, this.player.synchroTimer || 0);
     }
+  },
+
+  _drawBossPortal(ctx) {
+    const stage = this.currentStage;
+    if (!stage || !stage.bossPortal || this._bossPortalUsed) return;
+    const portal = stage.bossPortal;
+    const px = portal.tx * 48 + 24;
+    const py = portal.ty * 48;
+    const t  = Date.now() / 1000;
+
+    ctx.save();
+
+    // Rising beam
+    const grad = ctx.createLinearGradient(px, py - 80, px, py);
+    grad.addColorStop(0, 'rgba(200,80,255,0)');
+    grad.addColorStop(1, `rgba(200,80,255,${0.45 + Math.sin(t * 3) * 0.12})`);
+    ctx.fillStyle = grad;
+    ctx.fillRect(px - 18, py - 80, 36, 80);
+
+    // Pulsing orb
+    const r = 18 + Math.sin(t * 4) * 3;
+    ctx.beginPath();
+    ctx.arc(px, py - 36, r, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(220,100,255,${0.5 + Math.sin(t * 5) * 0.15})`;
+    ctx.fill();
+    ctx.strokeStyle = '#EE88FF';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Inner glow
+    ctx.beginPath();
+    ctx.arc(px, py - 36, r * 0.45, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(255,220,255,${0.7 + Math.sin(t * 7) * 0.2})`;
+    ctx.fill();
+
+    // Label (world-space — camera already applied)
+    ctx.font = 'bold 9px "MS Gothic","Courier New",monospace';
+    ctx.textAlign = 'center';
+    ctx.strokeStyle = '#440044';
+    ctx.lineWidth = 3;
+    ctx.strokeText('BOSS', px, py - 66);
+    ctx.fillStyle = '#FFDDFF';
+    ctx.fillText('BOSS', px, py - 66);
+    ctx.font = '8px "MS Gothic","Courier New",monospace';
+    ctx.strokeText('[攻撃]で入場', px, py - 56);
+    ctx.fillStyle = '#CCAAFF';
+    ctx.fillText('[攻撃]で入場', px, py - 56);
+
+    ctx.restore();
   },
 
   _drawBackground(ctx) {
