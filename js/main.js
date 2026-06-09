@@ -1,313 +1,374 @@
-// 幻海伝説 - メインコントローラー / GameState
+// クラゲライダー・カニィとプカプカの大冒険 - メインコントローラー
 
-const SAVE_KEY = 'genkaiSave';
+const CANVAS_W = 640;
+const CANVAS_H = 360;
+const SAVE_KEY = 'kaniSave';
 
 const DEFAULT_SAVE = {
-  version: 2,
-  playerName: '絆使い',
-  unlockedChapters: [0],
-  completedChapters: [],
-  collectedMonsterIds: [1, 11, 21],
-  monsterLevels: { 1: 1, 11: 1, 21: 1 },
-  monsterXP:    { 1: 0, 11: 0, 21: 0 },
-  selectedTeam: [1, 11, 21],
-  totalBattles: 0,
-  totalWins:    0,
+  clearedStages: [],
+  stageStars: {},
+  highScores: {},
+  totalPlayTime: 0,
 };
 
-const GameState = {
+// ===== GameManager =====
+const GameManager = {
+  canvas: null,
+  ctx: null,
+  input: null,
+  camera: null,
+  loop: null,
+  vpad: null,
+  hud: null,
+
+  state: 'title',
+  selectedOption: 0,
+  selectedStage: 0,
+
+  player: null,
+  enemies: [],
+  boss: null,
+  projectiles: [],
+  hazards: null,
+  tileMap: null,
+  currentStage: null,
+  score: 0,
+  stageTime: 0,
+  synchroGauge: 0,
+  pauseSelectedOption: 0,
+  goSelectedOption: 0,
+
   save: null,
-  currentScreen: 'title',
-  _context: {},
-  _activeUI: null,
-  _activeBattleUI: null,
-  _activeRoulette: null,
 
   init() {
-    this.loadGame();
-    this._bindTitleButtons();
-    this.navigateTo('title');
+    this.canvas = document.getElementById('game-canvas');
+    this.ctx    = this.canvas.getContext('2d');
+    this._resizeCanvas();
+    window.addEventListener('resize', () => this._resizeCanvas());
+
+    this.input = new Input();
+    this.hud   = new HUD();
+    this.vpad  = new VirtualPad(this.input);
+    this.vpad.mount();
+    this.vpad.hide();
+
+    this._loadSave();
+    this.camera = new Camera(CANVAS_W, CANVAS_H);
+
+    this.loop = new GameLoop(
+      (dt) => this._update(dt),
+      ()    => this._render()
+    );
+    this.loop.start();
+
+    window.addEventListener('keydown', (e) => this._handleMenuKey(e));
   },
 
-  // ===== セーブ / ロード =====
-  saveGame() {
-    try { localStorage.setItem(SAVE_KEY, JSON.stringify(this.save)); } catch (e) { console.warn('Save failed', e); }
+  _resizeCanvas() {
+    const scale = Math.min(window.innerWidth / CANVAS_W, window.innerHeight / CANVAS_H);
+    this.canvas.width  = CANVAS_W;
+    this.canvas.height = CANVAS_H;
+    this.canvas.style.width  = Math.floor(CANVAS_W * scale) + 'px';
+    this.canvas.style.height = Math.floor(CANVAS_H * scale) + 'px';
   },
 
-  loadGame() {
+  _loadSave() {
     try {
       const raw = localStorage.getItem(SAVE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        this.save = { ...DEFAULT_SAVE, ...parsed };
-        // オブジェクト型フィールドをマージ
-        this.save.monsterLevels = { ...DEFAULT_SAVE.monsterLevels, ...parsed.monsterLevels };
-        this.save.monsterXP    = { ...DEFAULT_SAVE.monsterXP,    ...parsed.monsterXP    };
-      } else {
-        this.save = { ...DEFAULT_SAVE };
-      }
-    } catch (e) {
-      console.warn('Load failed, resetting', e);
+      this.save = raw ? { ...DEFAULT_SAVE, ...JSON.parse(raw) } : { ...DEFAULT_SAVE };
+    } catch (_) {
       this.save = { ...DEFAULT_SAVE };
     }
   },
 
-  resetGame() {
-    localStorage.removeItem(SAVE_KEY);
-    this.save = { ...DEFAULT_SAVE };
-    this.navigateTo('title');
+  _saveSave() {
+    try { localStorage.setItem(SAVE_KEY, JSON.stringify(this.save)); } catch (_) {}
   },
 
-  // ===== 画面遷移 =====
-  navigateTo(screenId, ctx = {}) {
-    this._context = ctx;
+  _setState(newState) {
+    this.state = newState;
+    this.selectedOption = 0;
+    this.pauseSelectedOption = 0;
+    this.goSelectedOption = 0;
+    if (newState === 'playing') this.vpad.show();
+    else this.vpad.hide();
+  },
 
-    // 前の画面のUIをクリーンアップ
-    if (this._activeBattleUI) { this._activeBattleUI.unmount(); this._activeBattleUI = null; }
-    if (this._activeRoulette) { this._activeRoulette.reset(); this._activeRoulette = null; }
-    if (this._activeUI) { this._activeUI.unmount && this._activeUI.unmount(); this._activeUI = null; }
+  _startStage(stageIdx) {
+    const stageDef = STAGES[stageIdx];
+    if (!stageDef) return;
+    this.currentStage  = stageDef;
+    this.selectedStage = stageIdx;
+    this.score         = 0;
+    this.stageTime     = 0;
+    this.synchroGauge  = 0;
 
-    // 全スクリーン非表示
-    document.querySelectorAll('.screen').forEach(el => {
-      el.classList.remove('active');
-      el.style.display = 'none';
+    this.tileMap = new Physics.TileMap(stageDef.map, 48);
+
+    const ps = stageDef.playerStart;
+    this.player = new Player(ps.tx * 48 + 4, ps.ty * 48 - 30);
+
+    this.enemies = stageDef.enemySpawns.map(sp => {
+      const ex = sp.tx * 48, ey = sp.ty * 48 - 24;
+      switch (sp.type) {
+        case 'Oily':      return new Oily(ex, ey);
+        case 'Gomira':    return new Gomira(ex, ey);
+        case 'Fujitsubo': return new Fujitsubo(ex, ey);
+        case 'Mutsugoro': return new Mutsugoro(ex, ey);
+        default:          return new Oily(ex, ey);
+      }
     });
 
-    // 対象スクリーン表示
-    const target = document.getElementById(`screen-${screenId}`);
-    if (target) {
-      target.style.display = '';
-      target.classList.add('active');
+    if (stageDef.bossSpawn) {
+      const bs = stageDef.bossSpawn;
+      this.boss = new OctopusBoss(bs.tx * 48, bs.ty * 48 - 60);
+    } else {
+      this.boss = null;
     }
 
-    this.currentScreen = screenId;
-    this._onScreenEnter(screenId, ctx);
+    this.projectiles = [];
+    this.hazards     = new HazardManager();
+    this.camera.x    = 0;
+    this.camera.y    = 0;
+
+    this._setState('playing');
   },
 
-  _onScreenEnter(screenId, ctx) {
-    switch (screenId) {
+  _handleMenuKey(e) {
+    const code = e.code;
+    if (this.state === 'title') {
+      if (code === 'ArrowUp'   || code === 'ArrowLeft')  this.selectedOption = 0;
+      if (code === 'ArrowDown' || code === 'ArrowRight') this.selectedOption = 1;
+      if (code === 'Space' || code === 'Enter') {
+        if (this.selectedOption === 0) this._setState('stage-select');
+        else { this._loadSave(); this._setState('stage-select'); }
+      }
+    } else if (this.state === 'stage-select') {
+      if (code === 'ArrowLeft')  this.selectedStage = Math.max(0, this.selectedStage - 1);
+      if (code === 'ArrowRight') this.selectedStage = Math.min(STAGES.length - 1, this.selectedStage + 1);
+      if (code === 'Space' || code === 'Enter') this._startStage(this.selectedStage);
+      if (code === 'Escape') this._setState('title');
+    } else if (this.state === 'paused') {
+      if (code === 'ArrowUp' || code === 'ArrowDown') this.pauseSelectedOption ^= 1;
+      if (code === 'Space'   || code === 'Enter') {
+        if (this.pauseSelectedOption === 0) this._setState('playing');
+        else this._setState('title');
+      }
+      if (code === 'Escape') this._setState('playing');
+    } else if (this.state === 'stage-clear') {
+      if (code === 'Space' || code === 'Enter') {
+        const next = this.selectedStage + 1;
+        if (next < STAGES.length) { this.selectedStage = next; this._setState('stage-select'); }
+        else this._setState('title');
+      }
+    } else if (this.state === 'game-over') {
+      if (code === 'ArrowUp' || code === 'ArrowDown') this.goSelectedOption ^= 1;
+      if (code === 'Space'   || code === 'Enter') {
+        if (this.goSelectedOption === 0) this._startStage(this.selectedStage);
+        else this._setState('title');
+      }
+    }
+  },
+
+  _update(dt) {
+    this.input.update();
+    if (this.state === 'playing') this._updatePlaying(dt);
+  },
+
+  _updatePlaying(dt) {
+    if (this.input.pauseDown) { this._setState('paused'); return; }
+
+    this.stageTime += dt;
+
+    if (this.player) {
+      this.player.update(dt, this.input, this.tileMap, this.enemies, this.projectiles, this.hazards);
+
+      // ゴール判定
+      const goal = this._findGoalTile();
+      if (goal && Physics.rectOverlap(
+        this.player.x, this.player.y, this.player.w, this.player.h,
+        goal.x, goal.y, 48, 48
+      )) { this._onStageClear(); return; }
+
+      // 死亡判定
+      if (this.player.hp <= 0 || this.player.y > this.tileMap.worldHeight + 100) {
+        this._setState('game-over'); return;
+      }
+
+      this.synchroGauge = this.player.synchroGauge;
+    }
+
+    this.enemies = this.enemies.filter(e => e.alive);
+    this.enemies.forEach(e => e.update(dt, this.player, this.projectiles, this.tileMap));
+
+    if (this.boss && this.boss.alive) {
+      this.boss.update(dt, this.player, this.projectiles, this.tileMap);
+    }
+
+    this.projectiles = this.projectiles.filter(p => p.alive);
+    this.projectiles.forEach(p => p.update(dt, this.tileMap));
+
+    if (this.hazards) this.hazards.update(dt);
+
+    if (this.player) {
+      this.camera.follow(
+        this.player.x + this.player.w / 2,
+        this.player.y + this.player.h / 2,
+        this.tileMap.worldWidth,
+        this.tileMap.worldHeight
+      );
+    }
+    this.camera.update(dt);
+  },
+
+  _findGoalTile() {
+    const map = this.tileMap;
+    for (let ty = 0; ty < map.rows; ty++) {
+      for (let tx = 0; tx < map.cols; tx++) {
+        if (map.get(tx, ty) === 5) return { x: tx * 48, y: ty * 48 };
+      }
+    }
+    return null;
+  },
+
+  _onStageClear() {
+    const id = this.currentStage.id;
+    if (!this.save.clearedStages.includes(id)) this.save.clearedStages.push(id);
+    const stars = this.stageTime < 60 ? 3 : this.stageTime < 90 ? 2 : 1;
+    this.save.stageStars[id] = Math.max(this.save.stageStars[id] || 0, stars);
+    this.save.highScores[id] = Math.max(this.save.highScores[id] || 0, this.score);
+    this._saveSave();
+    this._setState('stage-clear');
+  },
+
+  _render() {
+    const { ctx } = this;
+    ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
+
+    switch (this.state) {
       case 'title':
-        this._updateTitleStats();
-        break;
-
-      case 'story':
-        const storyUI = new StoryUI(this);
-        storyUI.mount();
-        this._activeUI = storyUI;
-        break;
-
-      case 'team-select':
-        this._setupTeamSelect(ctx);
-        break;
-
-      case 'battle':
-        this._setupBattle(ctx);
-        break;
-
-      case 'collection':
-        this._setupCollection();
-        break;
-
-      case 'free-battle':
-        this._setupFreeBattle();
-        break;
+        Screens.drawTitle(ctx, CANVAS_W, CANVAS_H, this.selectedOption); break;
+      case 'stage-select':
+        Screens.drawStageSelect(ctx, CANVAS_W, CANVAS_H, STAGES,
+          this.save.clearedStages, this.save.stageStars, this.selectedStage); break;
+      case 'playing':
+        this._renderPlaying(ctx); break;
+      case 'paused':
+        this._renderPlaying(ctx);
+        Screens.drawPause(ctx, CANVAS_W, CANVAS_H, this.pauseSelectedOption); break;
+      case 'stage-clear':
+        this._renderPlaying(ctx);
+        Screens.drawStageClear(ctx, CANVAS_W, CANVAS_H, this.currentStage, this.score,
+          this.stageTime, this.save.stageStars[this.currentStage.id] || 1); break;
+      case 'game-over':
+        this._renderPlaying(ctx);
+        Screens.drawGameOver(ctx, CANVAS_W, CANVAS_H, this.goSelectedOption); break;
     }
   },
 
-  _bindTitleButtons() {
-    document.getElementById('btn-story')?.addEventListener('click', () => this.navigateTo('story'));
-    document.getElementById('btn-collection')?.addEventListener('click', () => this.navigateTo('collection'));
-    document.getElementById('btn-free-battle')?.addEventListener('click', () => this.navigateTo('free-battle'));
-    document.getElementById('btn-reset')?.addEventListener('click', () => {
-      if (confirm('データをリセットしますか？')) this.resetGame();
-    });
-  },
-
-  _updateTitleStats() {
-    const owned   = document.getElementById('title-owned');
-    const battles = document.getElementById('title-battles');
-    const wins    = document.getElementById('title-wins');
-    if (owned)   owned.textContent   = `コレクション: ${this.save.collectedMonsterIds.length}/60体`;
-    if (battles) battles.textContent = `総バトル数: ${this.save.totalBattles}`;
-    if (wins)    wins.textContent    = `勝利数: ${this.save.totalWins}`;
-  },
-
-  // ===== チーム選択 =====
-  _setupTeamSelect(ctx) {
-    const colUI = new CollectionUI(this, {
-      mode: 'select',
-      filterBarId: 'ts-filter-bar',
-      cardGridId:  'ts-card-grid',
-      onTeamConfirm: (teamIds) => {
-        this.save.selectedTeam = teamIds;
-        this.saveGame();
-        if (ctx.afterSelect) ctx.afterSelect(teamIds);
-        else this.navigateTo('battle', { playerTeam: teamIds.map(id => new Monster(id, this.save.monsterLevels[id] || 1)) });
-      }
-    });
-    colUI.mount();
-    this._activeUI = colUI;
-
-    // 戻るボタン
-    document.getElementById('btn-back-from-team')?.addEventListener('click', () => {
-      this.navigateTo(ctx.from || 'title');
-    });
-  },
-
-  // ===== バトル =====
-  _setupBattle(ctx) {
-    const { playerTeam, enemyTeam, difficulty, battleTitle, isBoss, midBattleScene, onComplete } = ctx;
-
-    // バトルタイトル表示
-    const titleEl = document.getElementById('battle-title');
-    if (titleEl) {
-      titleEl.textContent = battleTitle || 'バトル';
-      titleEl.className   = isBoss ? 'battle-title boss' : 'battle-title';
+  _renderPlaying(ctx) {
+    if (!this.tileMap) return;
+    this._drawBackground(ctx);
+    this.camera.applyToCtx(ctx);
+    this._drawTileMap(ctx);
+    if (this.hazards) this.hazards.draw(ctx);
+    this.enemies.forEach(e => e.draw(ctx));
+    if (this.boss && this.boss.alive) this.boss.draw(ctx);
+    this.projectiles.forEach(p => p.draw(ctx));
+    if (this.player) this.player.draw(ctx, this.hazards);
+    this.camera.restoreCtx(ctx);
+    if (this.hud && this.player) {
+      this.hud.drawHUD(ctx, this.player, this.boss && this.boss.alive ? this.boss : null,
+        this.currentStage, this.score, this.synchroGauge, this.player.synchroTimer || 0);
     }
+  },
 
-    // 結果オーバーレイリセット
-    const overlay = document.getElementById('battle-result-overlay');
-    if (overlay) overlay.style.display = 'none';
+  _drawBackground(ctx) {
+    const stage = this.currentStage;
+    if (!stage) return;
+    const [c1, c2] = stage.bgColor || ['#0a0a1f', '#1a2a4a'];
+    const grad = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
+    grad.addColorStop(0, c1);
+    grad.addColorStop(1, c2);
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+    // 浮かぶ泡
+    const t = Date.now() * 0.001;
+    ctx.fillStyle = 'rgba(255,255,255,0.05)';
+    for (let i = 0; i < 14; i++) {
+      const bx = ((i * 173 + t * 20) % CANVAS_W);
+      const by = CANVAS_H - ((t * (6 + i % 4) * 8 + i * 79) % CANVAS_H);
+      ctx.beginPath();
+      ctx.arc(bx, by, 2 + (i % 3), 0, Math.PI * 2);
+      ctx.fill();
+    }
+  },
 
-    // ルーレット
-    const stripEl   = document.getElementById('roulette-strip');
-    const pointerEl = document.getElementById('roulette-pointer');
-    if (!stripEl) return;
+  _drawTileMap(ctx) {
+    const { tileMap } = this;
+    const TS  = 48, PS = 3;
+    const cx  = Math.floor(this.camera.x);
+    const cy  = Math.floor(this.camera.y);
+    const stx = Math.max(0, Math.floor(cx / TS));
+    const etx = Math.min(tileMap.cols - 1, Math.ceil((cx + CANVAS_W) / TS));
+    const sty = Math.max(0, Math.floor(cy / TS));
+    const ety = Math.min(tileMap.rows - 1, Math.ceil((cy + CANVAS_H) / TS));
+    const t   = Date.now();
 
-    const engine = new BattleEngine(playerTeam, enemyTeam, {
-      difficulty: difficulty || 'normal',
-      onEvent: () => {},
-    });
-
-    const roulette = new RouletteController(stripEl, pointerEl, (action) => {
-      // EX枠処理
-      let finalAction = action;
-      if (action === 'ex') {
-        finalAction = playerTeam[engine.playerActiveIdx]?.canUseEx ? 'ex' : 'attack';
+    for (let ty = sty; ty <= ety; ty++) {
+      for (let tx = stx; tx <= etx; tx++) {
+        const tile = tileMap.get(tx, ty);
+        if (!tile) continue;
+        this._drawTile(ctx, tile, tx * TS, ty * TS, t, PS);
       }
-      engine.playerAction(finalAction);
-    });
+    }
+  },
 
-    const battleUI = new BattleUI(engine, roulette, (won) => {
-      this.save.totalBattles++;
-      if (won) this.save.totalWins++;
-
-      // バトル後のXP付与（モンスターのレベルアップはStoryUIで処理）
-      if (won) {
-        playerTeam.forEach(m => {
-          if (!m.isAlive) return;
-          const earned = 30;
-          this.save.monsterXP[m.id] = (this.save.monsterXP[m.id] || 0) + earned;
-          let lv = this.save.monsterLevels[m.id] || 1;
-          while (lv < 10 && this.save.monsterXP[m.id] >= lv * 100) {
-            this.save.monsterXP[m.id] -= lv * 100;
-            lv++;
-            this.save.monsterLevels[m.id] = lv;
-          }
-        });
-        this.saveGame();
-      }
-
-      if (onComplete) {
-        onComplete(won);
+  _drawTile(ctx, tile, wx, wy, t, PS) {
+    const TS = 48;
+    if (tile === 1) {
+      if (window.TILE_PAL && window.TILE_GROUND) {
+        SpriteRenderer.drawSpriteFrame(ctx, window.TILE_GROUND, 0, wx, wy, window.TILE_PAL, PS);
       } else {
-        this.navigateTo('title');
+        ctx.fillStyle = '#3a5a2a'; ctx.fillRect(wx, wy, TS, TS);
+        ctx.strokeStyle = '#2a4a1a'; ctx.lineWidth = 1; ctx.strokeRect(wx + 0.5, wy + 0.5, TS - 1, TS - 1);
       }
-    }, {
-      midBattleScene: midBattleScene,
-      onMidBattleScene: midBattleScene ? (scenes, done) => this._runMidBattleCutscene(scenes, done) : null,
-    });
-
-    this._activeRoulette = roulette;
-    this._activeBattleUI = battleUI;
-    engine.onEvent = (ev) => battleUI._handleEngineEvent(ev);
-
-    battleUI.mount();
-
-    // 戻るボタン（フリーバトル用）
-    document.getElementById('btn-battle-back')?.addEventListener('click', () => {
-      if (confirm('バトルを中断しますか？')) this.navigateTo('title');
-    });
-  },
-
-  _runMidBattleCutscene(scenes, onDone) {
-    const box = document.getElementById('cutscene-box');
-    if (!box) { onDone(); return; }
-    box.style.display = 'flex';
-
-    let idx = 0;
-    const speaker = document.getElementById('cutscene-speaker');
-    const line    = document.getElementById('cutscene-line');
-    const next    = document.getElementById('cutscene-next');
-
-    const show = () => {
-      if (idx >= scenes.length) {
-        box.style.display = 'none';
-        next.removeEventListener('click', handler);
-        onDone();
-        return;
+    } else if (tile === 2) {
+      if (window.TILE_PAL && window.TILE_OIL) {
+        SpriteRenderer.drawSpriteFrame(ctx, window.TILE_OIL, Math.floor(t / 500) % window.TILE_OIL.length, wx, wy, window.TILE_PAL, PS);
+      } else {
+        ctx.fillStyle = '#100804'; ctx.fillRect(wx, wy, TS, TS);
+        ctx.fillStyle = `hsla(${(t / 20) % 360},80%,50%,0.25)`; ctx.fillRect(wx + 4, wy + 4, TS - 8, TS - 8);
       }
-      const sc = scenes[idx++];
-      if (speaker) speaker.textContent = sc.speaker;
-      if (line)    line.textContent    = sc.text;
-    };
-    const handler = () => show();
-    next?.removeEventListener('click', this._midHandler);
-    this._midHandler = handler;
-    next?.addEventListener('click', handler);
-    show();
-  },
-
-  // ===== コレクション =====
-  _setupCollection() {
-    const colUI = new CollectionUI(this, { mode: 'view' });
-    colUI.mount();
-    this._activeUI = colUI;
-
-    document.getElementById('btn-back-from-collection')?.addEventListener('click', () => {
-      this.navigateTo('title');
-    });
-  },
-
-  // ===== フリーバトル =====
-  _setupFreeBattle() {
-    const panel = document.getElementById('free-battle-list');
-    if (!panel) return;
-    panel.innerHTML = '';
-
-    FREE_BATTLE_PRESETS.forEach((preset, i) => {
-      const btn = document.createElement('button');
-      btn.className = 'free-battle-btn';
-      btn.textContent = preset.name;
-      btn.addEventListener('click', () => {
-        this.navigateTo('team-select', {
-          from: 'free-battle',
-          afterSelect: (teamIds) => {
-            const playerTeam = teamIds.map(id => new Monster(id, this.save.monsterLevels[id] || 1));
-            const enemyTeam  = preset.teamMonsters.map(e => new Monster(e.monsterId, e.level));
-            this.navigateTo('battle', {
-              playerTeam, enemyTeam,
-              difficulty: 'normal',
-              battleTitle: `フリーバトル vs ${preset.name}`,
-              onComplete: (won) => {
-                this.navigateTo('free-battle');
-              }
-            });
-          }
-        });
-      });
-      panel.appendChild(btn);
-    });
-
-    document.getElementById('btn-back-from-free')?.addEventListener('click', () => {
-      this.navigateTo('title');
-    });
+    } else if (tile === 3) {
+      if (window.TILE_PAL && window.TILE_WATER) {
+        SpriteRenderer.drawSpriteFrame(ctx, window.TILE_WATER, Math.floor(t / 300) % window.TILE_WATER.length, wx, wy, window.TILE_PAL, PS);
+      } else {
+        ctx.fillStyle = '#081408'; ctx.fillRect(wx, wy, TS, TS);
+      }
+    } else if (tile === 4) {
+      if (window.TILE_PAL && window.TILE_SPIKE) {
+        SpriteRenderer.drawSpriteFrame(ctx, window.TILE_SPIKE, 0, wx, wy, window.TILE_PAL, PS);
+      } else {
+        ctx.fillStyle = '#1a1a1a'; ctx.fillRect(wx, wy, TS, TS);
+        ctx.fillStyle = '#888';
+        for (let i = 0; i < 4; i++) {
+          ctx.beginPath(); ctx.moveTo(wx + 5 + i * 11, wy + TS);
+          ctx.lineTo(wx + 10 + i * 11, wy + TS - 18); ctx.lineTo(wx + 15 + i * 11, wy + TS); ctx.fill();
+        }
+      }
+    } else if (tile === 5) {
+      // ゴール旗
+      ctx.fillStyle = 'rgba(255,215,0,0.2)'; ctx.fillRect(wx, wy, TS, TS);
+      ctx.fillStyle = '#ffd700'; ctx.fillRect(wx + 20, wy + 4, 3, TS - 4);
+      ctx.fillStyle = '#ff4400'; ctx.fillRect(wx + 23, wy + 4, 16, 10);
+      ctx.fillStyle = '#ffd700'; ctx.fillRect(wx + 23, wy + 4, 2, 10);
+    }
   },
 };
 
-window.GameState = GameState;
+window.GameManager = GameManager;
 
-// ===== 起動 =====
 document.addEventListener('DOMContentLoaded', () => {
-  GameState.init();
+  GameManager.init();
 });
