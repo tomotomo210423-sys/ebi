@@ -316,8 +316,8 @@
         const cx       = gridX + col * (cardW + gapX);
         const cy       = gridY + row * (cardH + gapY);
         const selected = (i === selectedIdx);
-        const cleared  = clearedStages && clearedStages.has(i + 1);
-        const locked   = i > 0 && !(clearedStages && clearedStages.has(i));
+        const cleared  = clearedStages && clearedStages.includes(i + 1);
+        const locked   = i > 0 && !(clearedStages && clearedStages.includes(i));
 
         const pulse = (Math.sin(Date.now() / 280) + 1) / 2;
 

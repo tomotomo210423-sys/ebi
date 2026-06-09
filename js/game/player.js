@@ -73,6 +73,7 @@
       this.skillCooldown    = 0;   // cooldown between skill uses
       this.synchroTimer     = 0;   // 200ms window after stomping an enemy
 
+      this.skillMaxCooldown = 1.5;  // used by HUD to show charge progress
       this.invincibleTimer  = 0;
 
       // Electric burst state
@@ -245,8 +246,10 @@
       this.vy = Math.max(-PUKU_MAX_SPD_Y, Math.min(PUKU_MAX_SPD_Y, this.vy));
 
       // Apply gentle sinusoidal bob (always present)
+      // Use the derivative: d/dt[A*sin(ωt)] = A*ω*cos(ωt), so per-frame delta = A*ω*cos(ωt)*dt
       this._bobTimer += dt;
-      const bobOffset = Math.sin(this._bobTimer * PUKU_BOB_FREQ * Math.PI * 2) * PUKU_BOB_AMP * dt;
+      const bobOffset = PUKU_BOB_AMP * PUKU_BOB_FREQ * Math.PI * 2 *
+                        Math.cos(this._bobTimer * PUKU_BOB_FREQ * Math.PI * 2) * dt;
 
       // Move Pukpuka
       this.x += this.vx * dt;
@@ -606,21 +609,18 @@
     // ------------------------------------------------------------------
 
     /**
-     * Called inside camera transform (draw at world coordinates minus camX/camY externally,
-     * or draw directly at world coords if camera is a ctx.translate).
+     * Called inside camera.applyToCtx() transform — draw at world coordinates directly.
      *
      * @param {CanvasRenderingContext2D} ctx
-     * @param {number} camX
-     * @param {number} camY
      * @param {HazardManager} hazards - optional, for screen-space effects
      */
-    draw(ctx, camX, camY, hazards) {
+    draw(ctx, hazards) {
       const invFlash = this.invincibleTimer > 0 &&
                        Math.floor(this.invincibleTimer / 0.08) % 2 === 1;
       if (invFlash) return;  // blink invisible while invincible
 
-      const sx = Math.round(this.x - camX);
-      const sy = Math.round(this.y - camY);
+      const sx = Math.round(this.x);
+      const sy = Math.round(this.y);
 
       // 1. Draw Pukpuka
       this._drawPukpuka(ctx, sx, sy);
@@ -631,8 +631,8 @@
       }
 
       // 3. Draw Kani
-      const ksx = Math.round(this.kaniAbsX - camX);
-      const ksy = Math.round(this.kaniAbsY - camY);
+      const ksx = Math.round(this.kaniAbsX);
+      const ksy = Math.round(this.kaniAbsY);
       this._drawKani(ctx, ksx, ksy);
 
       // 4. Synchro window label

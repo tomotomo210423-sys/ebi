@@ -264,7 +264,9 @@ const GameManager = {
         this._setState('game-over'); return;
       }
 
-      this.synchroGauge = this.player.synchroGauge;
+      this.synchroGauge = this.player.synchroTimer > 0
+        ? Math.min(100, (this.player.synchroTimer / 0.2) * 100)
+        : 0;
     }
 
     this.enemies = this.enemies.filter(e => e.alive);

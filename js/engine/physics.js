@@ -59,6 +59,12 @@
     /** Height of the entire map in canvas pixels */
     get worldHeight() { return this._rows * this._tileSize; }
 
+    /** Number of tile rows */
+    get rows() { return this._rows; }
+
+    /** Number of tile columns */
+    get cols() { return this._cols; }
+
     /**
      * Get tile type at tile coordinates (tx, ty).
      * Returns 0 (air) for out-of-bounds queries.
