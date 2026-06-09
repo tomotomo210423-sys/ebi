@@ -182,7 +182,7 @@
     // show() / hide()
     // -----------------------------------------------------------------------
     show() {
-      if (this._el) this._el.style.display = '';
+      if (this._el) this._el.style.display = 'block';
     }
 
     hide() {

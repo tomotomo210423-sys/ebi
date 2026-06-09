@@ -112,11 +112,11 @@
      * @param {number} camX - camera X offset (world-to-screen)
      * @param {number} camY - camera Y offset (world-to-screen)
      */
-    draw(ctx, camX, camY) {
+    draw(ctx) {
       if (!this.alive) return;
 
-      const sx = this.x - camX;
-      const sy = this.y - camY;
+      const sx = this.x;
+      const sy = this.y;
       const cx = sx + this.w / 2;
       const cy = sy + this.h / 2;
       const t  = this._animTimer;

@@ -24,6 +24,7 @@ const GameManager = {
   state: 'title',
   selectedOption: 0,
   selectedStage: 0,
+  pendingStageIdx: 0,   // stage to start after story screen
 
   player: null,
   enemies: [],
@@ -54,6 +55,11 @@ const GameManager = {
 
     this._loadSave();
     this.camera = new Camera(CANVAS_W, CANVAS_H);
+
+    // Show virtual pad on touch-capable devices
+    if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
+      document.body.classList.add('touch-device');
+    }
 
     this.loop = new GameLoop(
       (dt) => this._update(dt),
@@ -94,7 +100,15 @@ const GameManager = {
     this.pauseSelectedOption = 0;
     this.goSelectedOption = 0;
     if (newState === 'playing') this.vpad.show();
-    else this.vpad.hide();
+    else if (newState !== 'paused') this.vpad.hide();
+  },
+
+  _showStory(stageIdx) {
+    const stageDef = STAGES[stageIdx];
+    if (!stageDef) return;
+    this.pendingStageIdx = stageIdx;
+    this.currentStage    = stageDef;
+    this._setState('story');
   },
 
   _startStage(stageIdx) {
@@ -149,8 +163,12 @@ const GameManager = {
     } else if (this.state === 'stage-select') {
       if (code === 'ArrowLeft')  this.selectedStage = Math.max(0, this.selectedStage - 1);
       if (code === 'ArrowRight') this.selectedStage = Math.min(STAGES.length - 1, this.selectedStage + 1);
-      if (code === 'Space' || code === 'Enter') this._startStage(this.selectedStage);
+      if (code === 'Space' || code === 'Enter') this._showStory(this.selectedStage);
       if (code === 'Escape') this._setState('title');
+    } else if (this.state === 'story') {
+      if (code === 'Space' || code === 'Enter' || code === 'Escape') {
+        this._startStage(this.pendingStageIdx);
+      }
     } else if (this.state === 'paused') {
       if (code === 'ArrowUp' || code === 'ArrowDown') this.pauseSelectedOption ^= 1;
       if (code === 'Space'   || code === 'Enter') {
@@ -161,7 +179,7 @@ const GameManager = {
     } else if (this.state === 'stage-clear') {
       if (code === 'Space' || code === 'Enter') {
         const next = this.selectedStage + 1;
-        if (next < STAGES.length) { this.selectedStage = next; this._setState('stage-select'); }
+        if (next < STAGES.length) { this.selectedStage = next; this._showStory(next); }
         else this._setState('title');
       }
     } else if (this.state === 'game-over') {
@@ -203,13 +221,16 @@ const GameManager = {
         const by   = gridY + row * (cardH + gapY);
         if (cx >= bx && cx <= bx + cardW && cy >= by && cy <= by + cardH) {
           if (this.selectedStage === i) {
-            this._startStage(i);
+            this._showStory(i);
           } else {
             this.selectedStage = i;
           }
           break;
         }
       }
+
+    } else if (this.state === 'story') {
+      this._startStage(this.pendingStageIdx);
 
     } else if (this.state === 'paused') {
       const panelH = 130;
@@ -221,7 +242,7 @@ const GameManager = {
 
     } else if (this.state === 'stage-clear') {
       const next = this.selectedStage + 1;
-      if (next < STAGES.length) { this.selectedStage = next; this._setState('stage-select'); }
+      if (next < STAGES.length) { this.selectedStage = next; this._showStory(next); }
       else this._setState('title');
 
     } else if (this.state === 'game-over') {
@@ -322,6 +343,8 @@ const GameManager = {
       case 'stage-select':
         Screens.drawStageSelect(ctx, CANVAS_W, CANVAS_H, STAGES,
           this.save.clearedStages, this.save.stageStars, this.selectedStage); break;
+      case 'story':
+        Screens.drawStoryIntro(ctx, CANVAS_W, CANVAS_H, this.currentStage); break;
       case 'playing':
         this._renderPlaying(ctx); break;
       case 'paused':

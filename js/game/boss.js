@@ -42,6 +42,9 @@
 
       this._flashTimer    = 0;
       this._phaseFlash    = 0;   // short flash on phase transition
+
+      // Boss is dormant until the player gets close enough (no HUD bar, no attacks)
+      this.dormant        = true;
     }
 
     /**
@@ -83,7 +86,7 @@
     update(dt, player, projectiles, tileMap) { /* override */ }
 
     /** Subclass must implement */
-    draw(ctx, camX, camY) { /* override */ }
+    draw(ctx) { /* override */ }
 
     _tickTimers(dt) {
       if (this.invincibleTimer > 0) this.invincibleTimer -= dt;
@@ -206,6 +209,18 @@
 
     update(dt, player, projectiles, tileMap) {
       if (!this.alive) return;
+
+      // Activate when player comes within range
+      if (this.dormant && player) {
+        const dx = (player.x + player.w / 2) - (this.x + this.w / 2);
+        const dy = (player.y + player.h / 2) - (this.y + this.h / 2);
+        if (Math.sqrt(dx * dx + dy * dy) < 600) {
+          this.dormant     = false;
+          this._phaseFlash = 1.2;   // dramatic flash when boss wakes up
+        }
+        return;
+      }
+
       this._tickTimers(dt);
 
       this._swayTimer  += dt;
@@ -352,11 +367,11 @@
       }
     }
 
-    draw(ctx, camX, camY) {
+    draw(ctx) {
       if (!this.alive) return;
 
-      const sx = Math.round(this.x - camX);
-      const sy = Math.round(this.y - camY);
+      const sx = Math.round(this.x);
+      const sy = Math.round(this.y);
       const flipX = !this.facingRight;
 
       // Tentacle warning flash line

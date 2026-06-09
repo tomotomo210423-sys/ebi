@@ -89,7 +89,7 @@
     update(dt, player, projectiles, tileMap) { /* override */ }
 
     /** @param {CanvasRenderingContext2D} ctx @param {number} camX @param {number} camY */
-    draw(ctx, camX, camY)                    { /* override */ }
+    draw(ctx)                                 { /* override */ }
 
     // ------------------------------------------------------------------
     // Shared helpers
@@ -237,12 +237,12 @@
       this._walkAnim.update(dt);
     }
 
-    draw(ctx, camX, camY) {
+    draw(ctx) {
       if (!this.alive) return;
       if (this._shouldFlash()) return;
 
-      const sx = Math.round(this.x - camX);
-      const sy = Math.round(this.y - camY);
+      const sx = Math.round(this.x);
+      const sy = Math.round(this.y);
       const flipX = !this.facingRight;
 
       if (typeof OILY_FRAMES !== 'undefined' && OILY_FRAMES && OILY_FRAMES.length > 0 &&

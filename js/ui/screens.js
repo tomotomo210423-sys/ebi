@@ -409,6 +409,118 @@
     },
 
     // -----------------------------------------------------------------------
+    // drawStoryIntro  -  Pre-stage story screen
+    //
+    // @param {CanvasRenderingContext2D} ctx
+    // @param {number} cW
+    // @param {number} cH
+    // @param {object} stage  - stage data (has .storyTitle, .storyLines[])
+    // @param {number} page   - current text page index (for multi-line reveal)
+    // -----------------------------------------------------------------------
+    drawStoryIntro(ctx, cW, cH, stage) {
+      if (!stage) return;
+
+      const t = Date.now() / 1000;
+
+      // ── Background ───────────────────────────────────────────────────────
+      const bgGrad = ctx.createLinearGradient(0, 0, 0, cH);
+      bgGrad.addColorStop(0, '#000010');
+      bgGrad.addColorStop(1, '#050520');
+      ctx.fillStyle = bgGrad;
+      ctx.fillRect(0, 0, cW, cH);
+
+      // Slow drifting particles
+      ctx.save();
+      for (let i = 0; i < 20; i++) {
+        const seed  = i * 137.5;
+        const px    = ((seed * 0.31 + t * 4) % cW + cW) % cW;
+        const py    = cH - ((t * (8 + (seed % 5)) + seed * 0.7) % (cH + 10));
+        ctx.beginPath();
+        ctx.arc(px, py, 1.5 + (seed % 3) * 0.5, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(100,180,255,0.18)';
+        ctx.fill();
+      }
+      ctx.restore();
+
+      // ── Characters (bobbing gently) ───────────────────────────────────────
+      const bob  = Math.sin(t * 1.4) * 4;
+      const charX = cW * 0.78;
+      const charY = cH * 0.52 + bob;
+      ctx.save();
+      ctx.globalAlpha = 0.85;
+      drawPixelPukpuka(ctx, charX, charY + 12, 3);
+      drawPixelKani   (ctx, charX, charY - 2,  3);
+      ctx.restore();
+
+      // ── Decorative divider line ───────────────────────────────────────────
+      ctx.save();
+      const divGrad = ctx.createLinearGradient(0, 0, cW * 0.65, 0);
+      divGrad.addColorStop(0,   'rgba(80,160,220,0)');
+      divGrad.addColorStop(0.3, 'rgba(80,160,220,0.6)');
+      divGrad.addColorStop(0.9, 'rgba(80,160,220,0.3)');
+      divGrad.addColorStop(1,   'rgba(80,160,220,0)');
+      ctx.strokeStyle = divGrad;
+      ctx.lineWidth   = 1;
+      ctx.beginPath();
+      ctx.moveTo(0, cH * 0.30);
+      ctx.lineTo(cW * 0.68, cH * 0.30);
+      ctx.stroke();
+      ctx.restore();
+
+      // ── Stage number ─────────────────────────────────────────────────────
+      ctx.font         = '10px "MS Gothic", "Courier New", monospace';
+      ctx.textAlign    = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle    = 'rgba(100,180,220,0.7)';
+      ctx.fillText('STAGE ' + (stage.id || ''), 28, cH * 0.22);
+
+      // ── Story title ───────────────────────────────────────────────────────
+      const title = stage.storyTitle || stage.name || '';
+      drawOutlinedText(ctx, title, 28 + ctx.measureText(title).width / 2,
+        cH * 0.27, '#88eeff', '#001133', 18, 'left');
+
+      // ── Story text lines ──────────────────────────────────────────────────
+      const lines = stage.storyLines || [];
+      const lineH = 26;
+      const textY = cH * 0.38;
+
+      // Text box background
+      const tbW = cW * 0.63;
+      const tbH = lines.length * lineH + 24;
+      roundRect(ctx, 20, textY - 14, tbW, tbH, 6);
+      ctx.fillStyle = 'rgba(0,5,20,0.65)';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(60,120,180,0.4)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      for (let i = 0; i < lines.length; i++) {
+        const ly = textY + i * lineH;
+        // Typewriter-like stagger
+        const delay    = i * 0.4;
+        const elapsed  = Math.max(0, t % 8 - delay);
+        const visible  = Math.min(1, elapsed * 3);
+        if (visible <= 0) continue;
+
+        ctx.font         = '11px "MS Gothic", "Noto Sans JP", "Courier New", monospace';
+        ctx.textAlign    = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.globalAlpha  = visible;
+        ctx.fillStyle    = i === 0 ? '#ccddff' : '#aabbcc';
+        ctx.fillText(lines[i], 32, ly);
+        ctx.globalAlpha = 1;
+      }
+
+      // ── "タップして進む" hint ─────────────────────────────────────────────
+      const blink = (Math.sin(t * 3.5) + 1) / 2;
+      ctx.font         = '10px "MS Gothic", "Courier New", monospace';
+      ctx.textAlign    = 'center';
+      ctx.textBaseline = 'bottom';
+      ctx.fillStyle    = 'rgba(160,200,240,' + (0.5 + blink * 0.5) + ')';
+      ctx.fillText('タップまたはキーで進む ►', cW / 2, cH - 10);
+    },
+
+    // -----------------------------------------------------------------------
     // drawPause  -  Pause overlay
     //
     // @param {CanvasRenderingContext2D} ctx

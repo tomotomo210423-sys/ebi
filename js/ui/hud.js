@@ -70,7 +70,7 @@
       this._drawSynchroGauge(ctx, synchroGauge, synchroTimer, cW, cH, player, dt);
 
       // ── Boss HP bar ──────────────────────────────────────────────────────
-      if (boss && boss.alive) {
+      if (boss && boss.alive && !boss.dormant) {
         // Detect damage flash
         if (this._bossLastHp > boss.hp) {
           this._bossFlashTimer = 0.25;
