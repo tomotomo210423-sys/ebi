@@ -129,7 +129,8 @@
         const below = this.y + this.h + 4;
         const tx    = Math.floor(ahead / TILE_SIZE);
         const ty    = Math.floor(below / TILE_SIZE);
-        if (tileMap.get(tx, ty) === 0) {
+        const tileBelow = tileMap.get(tx, ty);
+        if (tileBelow === 0) {  // only flip at air — water/oil/solid are all valid floors
           this._patrolDir  *= -1;
           this.facingRight  = (this._patrolDir > 0);
           this._dirFlipCooldown = 0.25;

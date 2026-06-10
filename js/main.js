@@ -346,9 +346,9 @@ const GameManager = {
     const dist = Math.hypot(playerCX - portalCX, playerCY - portalCY);
     if (dist < 90 && this.input.attackDown) {
       this._bossPortalUsed = true;
-      // Teleport player to boss arena (8 tiles past the portal)
-      this.player.x  = (portal.tx + 8) * 48;
-      this.player.y  = (portal.ty - 1) * 48;
+      // Teleport player into boss arena (past the solid wall at cols 55-59)
+      this.player.x  = 63 * 48;
+      this.player.y  = 7 * 48;
       this.player.vx = 0;
       this.player.vy = 0;
       // Wake boss immediately

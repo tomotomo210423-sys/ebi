@@ -190,8 +190,9 @@
         }
       }
 
-      // 9. Check enemy projectile hits
+      // 9. Check enemy projectile hits + body contact
       this._checkEnemyProjectileHits(projectiles, hazards);
+      this._checkEnemyBodyContact(enemies, hazards);
 
       // 10. Check tile hazards (spikes, dirty water)
       if (this.hitSpike) {
@@ -219,15 +220,9 @@
         this.facingRight = false;
         this._isMovingH  = true;
       } else {
-        // Friction deceleration
-        const decel = frictionPerSec * dt;
-        if (Math.abs(this.vx) < decel) {
-          this.vx = 0;
-        } else {
-          this.vx -= Math.sign(this.vx) * decel * 60;
-        }
-        // Smoother: multiply by factor
+        // Exponential friction only — avoids sign-flip oscillation
         this.vx *= Math.pow(PUKU_FRICTION, dt * 10);
+        if (Math.abs(this.vx) < 2) this.vx = 0;
         this._isMovingH = false;
       }
 
@@ -467,6 +462,30 @@
         if (hitPuku || hitKani) {
           proj.alive = false;
           this.takeDamage(proj.damage, hazards);
+        }
+      }
+    }
+
+    // ------------------------------------------------------------------
+    // Enemy body contact damage
+    // ------------------------------------------------------------------
+
+    _checkEnemyBodyContact(enemies, hazards) {
+      if (!enemies || this.invincibleTimer > 0) return;
+      const kb = this.kaniHitbox;
+      for (const enemy of enemies) {
+        if (!enemy.alive) continue;
+        const hitPuku = Physics.rectOverlap(
+          this.x, this.y, this.w, this.h,
+          enemy.x, enemy.y, enemy.w, enemy.h
+        );
+        const hitKani = Physics.rectOverlap(
+          kb.x, kb.y, kb.w, kb.h,
+          enemy.x, enemy.y, enemy.w, enemy.h
+        );
+        if (hitPuku || hitKani) {
+          this.takeDamage(1, hazards);
+          return;  // one hit per frame max
         }
       }
     }

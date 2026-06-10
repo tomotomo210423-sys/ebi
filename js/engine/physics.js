@@ -178,15 +178,31 @@
             continue;
           }
 
-          // Oil: flag + friction applied by caller
+          // Oil: flag + act as floor so entities don't fall through
           if (tile === 2) {
             entity.onOil = true;
+            const tileTop2   = ty * ts;
+            const overlapT2  = (entity.y + hh) - tileTop2;
+            const overlapB2  = (tileTop2 + ts) - entity.y;
+            if (overlapT2 > 0 && overlapB2 > 0 && overlapT2 < overlapB2) {
+              entity.y = tileTop2 - hh;
+              if (entity.vy > 0) entity.vy = 0;
+              entity.onGround = true;
+            }
             continue;
           }
 
-          // Dirty water: slow + flag
+          // Dirty water: slow + flag + act as floor so entities don't sink through
           if (tile === 3) {
             entity.inWater = true;
+            const tileTop3   = ty * ts;
+            const overlapT3  = (entity.y + hh) - tileTop3;
+            const overlapB3  = (tileTop3 + ts) - entity.y;
+            if (overlapT3 > 0 && overlapB3 > 0 && overlapT3 < overlapB3) {
+              entity.y = tileTop3 - hh;
+              if (entity.vy > 0) entity.vy = 0;
+              entity.onGround = true;
+            }
             continue;
           }
 
