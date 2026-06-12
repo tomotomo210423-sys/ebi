@@ -135,7 +135,8 @@
       for (let ty = tyT; ty <= tyB; ty++) {
         for (let tx = txL; tx <= txR; tx++) {
           const tile = tileMap.get(tx, ty);
-          if (tile === 1) { // solid
+          if (tile === 1 || tile === 2) { // solid (oil is solid but slippery)
+            if (tile === 2) entity.onOil = true;
             const tileLeft  = tx * ts;
             const tileRight = tileLeft + ts;
             const overlapL  = (entity.x + hw) - tileLeft;
@@ -178,10 +179,9 @@
             continue;
           }
 
-          // Oil: flag + friction applied by caller
+          // Oil: flag, then resolve as solid below (solid but slippery)
           if (tile === 2) {
             entity.onOil = true;
-            continue;
           }
 
           // Dirty water: slow + flag
@@ -190,7 +190,7 @@
             continue;
           }
 
-          if (tile === 1) { // solid
+          if (tile === 1 || tile === 2) { // solid (oil included)
             const tileTop    = ty * ts;
             const tileBottom = tileTop + ts;
             const overlapT   = (entity.y + hh) - tileTop;

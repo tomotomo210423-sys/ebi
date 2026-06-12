@@ -53,7 +53,8 @@
       // Gravity flag (only ink/oilball arc slightly)
       this._gravScale = (type === 'ink' || type === 'oilball') ? 120 : 0;
       // Lifetime cap so projectiles don't fly forever
-      this._lifetime  = 3.0;
+      // (claw is a short-lived melee flash, not a long-range shot)
+      this._lifetime  = (type === 'claw') ? 0.15 : 3.0;
     }
 
     /**
@@ -88,8 +89,8 @@
         const ty = Math.floor(cy / ts);
 
         const tile = tileMap.get(tx, ty);
-        // Die on solid tiles (type 1)
-        if (tile === 1) {
+        // Die on solid tiles (1 = ground, 2 = oil — both are solid)
+        if (tile === 1 || tile === 2) {
           this.alive = false;
           return;
         }

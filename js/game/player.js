@@ -57,12 +57,12 @@
 
       // ---- Kani (crab) state ----
       this.kaniOnPukpuka = true;
-      this.kaniAbsX      = x + (this.w / 2 - 15);  // centered on pukpuka
+      this.kaniW         = 30;   // 10 art × 3 scale
+      this.kaniH         = 24;   //  8 art × 3 scale
+      this.kaniAbsX      = x + (this.w / 2 - this.kaniW / 2);  // centered on pukpuka
       this.kaniAbsY      = y - this.kaniH;   // プカプカドームの上に乗る
       this.kaniVx        = 0;
       this.kaniVy        = 0;
-      this.kaniW         = 30;   // 10 art × 3 scale
-      this.kaniH         = 24;   //  8 art × 3 scale
       this.kaniOnGround  = false;
 
       // ---- Combat state ----
@@ -220,11 +220,11 @@
         this._isMovingH  = true;
       } else {
         // Friction deceleration
-        const decel = frictionPerSec * dt;
+        const decel = frictionPerSec * dt * 60;
         if (Math.abs(this.vx) < decel) {
           this.vx = 0;
         } else {
-          this.vx -= Math.sign(this.vx) * decel * 60;
+          this.vx -= Math.sign(this.vx) * decel;
         }
         // Smoother: multiply by factor
         this.vx *= Math.pow(PUKU_FRICTION, dt * 10);
@@ -344,6 +344,10 @@
             enemy.x, enemy.y, enemy.w, enemy.h
           )) {
             const killed = enemy.takeDamage(1, this.facingRight ? 1 : -1);
+            if (killed) {
+              // Open the synchro window: skill used within 200ms deals bonus damage
+              this.synchroTimer = 0.2;
+            }
             if (hazards) {
               hazards.spawn(
                 enemy.x + enemy.w / 2,

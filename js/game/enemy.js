@@ -194,12 +194,9 @@
       this._shootCooldown = 3.0;
       this._idleAnim     = new SpriteRenderer.Animator(5);
       this._walkAnim     = new SpriteRenderer.Animator(6);
-      this._idleAnim.setFrameCount(
-        (typeof OILY_FRAMES !== 'undefined' && OILY_FRAMES) ? OILY_FRAMES.length : 2
-      );
-      this._walkAnim.setFrameCount(
-        (typeof OILY_FRAMES !== 'undefined' && OILY_FRAMES) ? OILY_FRAMES.length : 2
-      );
+      const of = (typeof OILY_FRAMES !== 'undefined' && OILY_FRAMES) ? OILY_FRAMES : null;
+      this._idleAnim.setFrameCount(of && of.idle   ? of.idle.length   : 2);
+      this._walkAnim.setFrameCount(of && of.squish ? of.squish.length : 2);
       this._animTimer = 0;
     }
 
@@ -249,9 +246,9 @@
       const sy = Math.round(this.y);
       const flipX = !this.facingRight;
 
-      if (typeof OILY_FRAMES !== 'undefined' && OILY_FRAMES && OILY_FRAMES.length > 0 &&
+      if (typeof OILY_FRAMES !== 'undefined' && OILY_FRAMES && OILY_FRAMES.idle &&
           typeof OILY_PAL !== 'undefined' && OILY_PAL) {
-        SpriteRenderer.drawSpriteFrame(ctx, OILY_FRAMES, this._walkAnim.frame, sx, sy, OILY_PAL, 3, flipX);
+        SpriteRenderer.drawSpriteFrame(ctx, OILY_FRAMES.idle, this._idleAnim.frame, sx, sy, OILY_PAL, 3, flipX);
       } else {
         // Fallback placeholder
         ctx.save();
